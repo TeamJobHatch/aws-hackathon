@@ -1,7 +1,7 @@
 {
-  "name": "jobhatch-ai-assistant",
+  "name": "recruitai-hr-screening",
   "version": "1.0.0",
-  "description": "AI-powered job application assistant with ChatGPT integration",
+  "description": "AI-powered HR resume screening and candidate analysis platform",
   "private": true,
   "scripts": {
     "dev": "next dev",

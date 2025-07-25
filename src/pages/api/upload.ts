@@ -1,44 +1,19 @@
 import { NextApiRequest, NextApiResponse } from 'next'
+import OpenAI from 'openai'
 import multer from 'multer'
-import path from 'path'
-import fs from 'fs'
+import parsePdf from 'pdf-parse'
 import mammoth from 'mammoth'
-import pdf from 'pdf-parse'
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
 
 // Configure multer for file uploads
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      const uploadDir = './uploads'
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true })
-      }
-      cb(null, uploadDir)
-    },
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-      cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
-    }
-  }),
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedMimeTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ]
-    
-    if (allowedMimeTypes.includes(file.mimetype)) {
-      cb(null, true)
-    } else {
-      cb(new Error('Invalid file type. Only PDF, DOC, and DOCX files are allowed.'))
-    }
-  }
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 })
 
-// Helper function to run multer middleware
 function runMiddleware(req: any, res: any, fn: any) {
   return new Promise((resolve, reject) => {
     fn(req, res, (result: any) => {
@@ -50,25 +25,73 @@ function runMiddleware(req: any, res: any, fn: any) {
   })
 }
 
-// Helper function to extract text from uploaded files
-async function extractTextFromFile(filePath: string, mimeType: string): Promise<string> {
+async function extractTextFromFile(file: Express.Multer.File): Promise<string> {
+  const { buffer, mimetype } = file
+
+  if (mimetype === 'application/pdf') {
+    const pdfData = await parsePdf(buffer)
+    return pdfData.text
+  } else if (
+    mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    mimetype === 'application/msword'
+  ) {
+    const docData = await mammoth.extractRawText({ buffer })
+    return docData.value
+  } else if (mimetype === 'text/plain') {
+    return buffer.toString('utf-8')
+  } else {
+    throw new Error('Unsupported file type')
+  }
+}
+
+async function extractJobDescriptionData(content: string) {
+  const prompt = `Extract structured information from this job description. Return a JSON object with the following fields:
+
+{
+  "title": "job title",
+  "company": "company name",
+  "location": "location",
+  "salary": "salary range if mentioned",
+  "requirements": ["requirement1", "requirement2", ...],
+  "qualifications": ["qualification1", "qualification2", ...],
+  "skills": ["skill1", "skill2", ...]
+}
+
+Job Description:
+${content}
+
+Return only valid JSON, no other text.`
+
   try {
-    if (mimeType === 'application/pdf') {
-      const dataBuffer = fs.readFileSync(filePath)
-      const data = await pdf(dataBuffer)
-      return data.text
-    } else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      const result = await mammoth.extractRawText({ path: filePath })
-      return result.value
-    } else if (mimeType === 'application/msword') {
-      // For .doc files, you might need additional libraries like 'word-extractor'
-      // For now, we'll return a placeholder
-      return 'Document content extraction not available for .doc files. Please convert to .docx or .pdf format.'
-    }
-    return ''
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant that extracts structured data from job descriptions. Return only valid JSON.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      max_tokens: 1000,
+      temperature: 0.1,
+    })
+
+    const response = completion.choices[0]?.message?.content || '{}'
+    return JSON.parse(response)
   } catch (error) {
-    console.error('Error extracting text from file:', error)
-    throw new Error('Failed to extract text from file')
+    console.error('Error extracting job description data:', error)
+    return {
+      title: 'Job Position',
+      company: '',
+      location: '',
+      salary: '',
+      requirements: [],
+      qualifications: [],
+      skills: []
+    }
   }
 }
 
@@ -78,47 +101,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Run the multer middleware
+    // Run multer middleware
     await runMiddleware(req, res, upload.single('file'))
 
     const file = (req as any).file
+    const fileType = (req as any).body.type || 'document'
+
     if (!file) {
       return res.status(400).json({ error: 'No file uploaded' })
     }
 
-    // Extract text from the uploaded file
-    const textContent = await extractTextFromFile(file.path, file.mimetype)
+    // Extract text from the file
+    const content = await extractTextFromFile(file)
 
-    // Determine file type
-    let fileType: 'pdf' | 'docx'
-    if (file.mimetype === 'application/pdf') {
-      fileType = 'pdf'
-    } else {
-      fileType = 'docx'
-    }
-
-    // Create response object
-    const uploadedFile = {
+    let response: any = {
       id: Date.now().toString(),
       name: file.originalname,
-      type: fileType,
-      content: textContent,
+      type: file.mimetype === 'application/pdf' ? 'pdf' : 'docx',
+      content,
       uploadedAt: new Date()
     }
 
-    // Clean up the uploaded file from disk
-    fs.unlinkSync(file.path)
+    // If it's a job description, extract structured data
+    if (fileType === 'job-description') {
+      const extractedData = await extractJobDescriptionData(content)
+      response.extractedData = extractedData
+    }
 
-    res.status(200).json(uploadedFile)
+    res.status(200).json(response)
   } catch (error) {
     console.error('Upload error:', error)
-    res.status(500).json({ error: 'Failed to process uploaded file' })
+    res.status(500).json({ 
+      error: 'Failed to process file. Please try again.',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    })
   }
 }
 
-// Disable body parser for file uploads
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: false, // Required for multer
   },
 } 
