@@ -60,11 +60,35 @@ export default function JobDescriptionStep({
           uploadedAt: new Date(),
           content: data.content
         }
-        updateState({ jobDescription: newJobDescription })
-        toast.success('Job description uploaded successfully!')
+        
+        // Update API status based on response
+        const apiStatus = data.apiStatus || 'working'
+        const apiMessage = data.apiMessage
+        
+        updateState({ 
+          jobDescription: newJobDescription,
+          apiStatus,
+          apiMessage
+        })
+        
+        if (apiStatus === 'working') {
+          toast.success('Job description uploaded successfully!')
+        } else if (apiStatus === 'limited') {
+          toast.success('Job description uploaded! AI analysis limited - using basic extraction.')
+        } else {
+          toast.success('Job description uploaded! Using basic analysis due to AI service issues.')
+        }
+        
         goToNextStep()
       },
-      onError: () => {
+      onError: (error: any) => {
+        const errorData = error.response?.data
+        if (errorData?.apiStatus) {
+          updateState({ 
+            apiStatus: errorData.apiStatus,
+            apiMessage: errorData.apiMessage
+          })
+        }
         toast.error('Failed to upload job description. Please try again.')
       }
     }

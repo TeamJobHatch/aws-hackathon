@@ -127,18 +127,28 @@ export default function ConfirmJobDetails({
         )}
 
         {/* AI Analysis Summary */}
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
-          <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
-            <span className="text-blue-600 mr-2">🤖</span>
-            AI Analysis Summary
-          </h4>
-          <p className="text-sm text-gray-700">
-            Our AI has identified <strong>{jobDescription.requirements.length}</strong> key requirements
-            {jobDescription.skills.length > 0 && `, <strong>${jobDescription.skills.length}</strong> essential skills`}
-            {jobDescription.qualifications.length > 0 && `, and <strong>${jobDescription.qualifications.length}</strong> preferred qualifications`}.
-            This information will be used to match and rank candidates.
-          </p>
-        </div>
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+                <span className="text-blue-600 mr-2">🤖</span>
+                AI Analysis Summary
+              </h4>
+              <p className="text-sm text-gray-700">
+                Our AI has identified{' '}
+                <span className="font-semibold text-blue-600">{jobDescription.requirements.length}</span>{' '}
+                key requirements
+                {jobDescription.skills.length > 0 && (
+                  <>
+                    , <span className="font-semibold text-orange-600">{jobDescription.skills.length}</span> essential skills
+                  </>
+                )}
+                {jobDescription.qualifications.length > 0 && (
+                  <>
+                    , and <span className="font-semibold text-green-600">{jobDescription.qualifications.length}</span> preferred qualifications
+                  </>
+                )}.
+                This information will be used to match and rank candidates.
+              </p>
+            </div>
       </div>
 
       {/* Action Buttons */}

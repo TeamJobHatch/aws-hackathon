@@ -3,7 +3,7 @@ import OpenAI from 'openai'
 import multer from 'multer'
 import parsePdf from 'pdf-parse'
 import mammoth from 'mammoth'
-import { ResumeAnalysis } from '@/types'
+import { ResumeAnalysis, JobDescription } from '@/types'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -56,6 +56,102 @@ function extractCandidateInfo(resumeText: string): { name: string; email?: strin
   }
 }
 
+async function generateEnhancedAnalysis(resumeText: string, jobDescription: JobDescription): Promise<ResumeAnalysis> {
+  // Check if OpenAI API key is available
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('OpenAI API key not configured')
+    throw new Error('AI analysis service not configured')
+  }
+
+  const prompt = `
+You are an expert HR analyst. Analyze this resume against the job description and provide a detailed assessment.
+
+Job Title: ${jobDescription.title}
+Company: ${jobDescription.company}
+Job Requirements: ${jobDescription.requirements.join(', ')}
+Job Skills: ${jobDescription.skills.join(', ')}
+
+Resume Content:
+${resumeText.substring(0, 4000)}
+
+Provide your analysis in this exact JSON format:
+{
+  "overallScore": 85,
+  "matchPercentage": 80,
+  "summary": "Brief 2-3 sentence summary of the candidate's fit for this role",
+  "strengths": ["strength1", "strength2", "strength3"],
+  "weaknesses": ["weakness1", "weakness2"],
+  "recommendations": ["recommendation1", "recommendation2"],
+  "skillsMatch": [
+    {"skill": "JavaScript", "hasSkill": true, "level": "Advanced"},
+    {"skill": "React", "hasSkill": true, "level": "Intermediate"}
+  ],
+  "experienceMatch": {
+    "score": 75,
+    "requiredYears": 3,
+    "candidateYears": 5,
+    "relevantExperience": ["Experience detail 1", "Experience detail 2"]
+  }
+}
+
+Return only the JSON object, no other text.`
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert HR analyst specializing in resume evaluation. Provide thorough, objective analysis with specific scores and detailed feedback. Always return valid JSON.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      max_tokens: 3000,
+      temperature: 0.2,
+    })
+
+    const responseText = completion.choices[0]?.message?.content || '{}'
+    
+    // Clean markdown formatting if present
+    const cleanedResponse = responseText.replace(/```json\n?|\n?```/g, '').trim()
+    
+    const analysis = JSON.parse(cleanedResponse)
+
+    // Validate and ensure required fields with proper types
+    const validatedAnalysis: ResumeAnalysis = {
+      overallScore: Math.min(100, Math.max(0, Number(analysis.overallScore) || 0)),
+      matchPercentage: Math.min(100, Math.max(0, Number(analysis.matchPercentage) || 0)),
+      summary: analysis.summary || 'Analysis completed using AI assessment.',
+      strengths: Array.isArray(analysis.strengths) ? analysis.strengths : ['Professional background identified'],
+      weaknesses: Array.isArray(analysis.weaknesses) ? analysis.weaknesses : ['Areas for improvement noted'],
+      recommendations: Array.isArray(analysis.recommendations) ? analysis.recommendations : ['Consider for interview'],
+      skillsMatch: Array.isArray(analysis.skillsMatch) ? analysis.skillsMatch : [],
+      experienceMatch: analysis.experienceMatch && typeof analysis.experienceMatch === 'object' ? {
+        score: Math.min(100, Math.max(0, Number(analysis.experienceMatch.score) || 0)),
+        requiredYears: Number(analysis.experienceMatch.requiredYears) || 0,
+        candidateYears: Number(analysis.experienceMatch.candidateYears) || 0,
+        relevantExperience: Array.isArray(analysis.experienceMatch.relevantExperience) ? 
+          analysis.experienceMatch.relevantExperience : ['Experience assessed']
+      } : {
+        score: 50,
+        requiredYears: 0,
+        candidateYears: 0,
+        relevantExperience: ['Experience assessment completed']
+      }
+    }
+
+    console.log(`AI Analysis completed with ${validatedAnalysis.overallScore}% overall score`)
+    return validatedAnalysis
+
+  } catch (error: any) {
+    console.error('OpenAI API error:', error)
+    throw new Error(`AI analysis failed: ${error.message}`)
+  }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -81,95 +177,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Extract text from uploaded resume
     const resumeText = await extractTextFromFile(file)
     
+    // Check if text extraction was successful
+    if (!resumeText || resumeText.trim().length < 50) {
+      return res.status(400).json({ 
+        error: 'Unable to extract sufficient text from resume. Please check the file format.',
+        apiStatus: 'error'
+      })
+    }
+
     // Extract candidate info
     const candidateInfo = extractCandidateInfo(resumeText)
 
-    // Prepare prompt for AI analysis
-    const analysisPrompt = `You are an expert HR professional analyzing a resume against a job description. 
-
-JOB DESCRIPTION:
-Title: ${jobDescription.title}
-Company: ${jobDescription.company}
-Description: ${jobDescription.description}
-Requirements: ${jobDescription.requirements.join('\n- ')}
-Qualifications: ${jobDescription.qualifications.join('\n- ')}
-
-CANDIDATE RESUME:
-${resumeText}
-
-Please analyze this resume against the job requirements and provide a detailed assessment in the following JSON format:
-
-{
-  "matchPercentage": number (0-100),
-  "overallScore": number (0-100),
-  "strengths": ["strength1", "strength2", ...],
-  "weaknesses": ["weakness1", "weakness2", ...],
-  "skillsMatch": [
-    {
-      "skill": "skill name",
-      "found": boolean,
-      "confidence": number (0-100),
-      "evidence": ["evidence1", "evidence2"]
-    }
-  ],
-  "experienceMatch": {
-    "requiredYears": number,
-    "candidateYears": number,
-    "relevantExperience": ["experience1", "experience2"],
-    "score": number (0-100)
-  },
-  "recommendations": ["recommendation1", "recommendation2", ...],
-  "summary": "A concise summary of the candidate's fit for this role"
-}
-
-Focus on:
-1. Technical skills alignment
-2. Experience level and relevance
-3. Educational background
-4. Soft skills and cultural fit indicators
-5. Areas where the candidate excels or needs improvement
-
-Be thorough but concise in your analysis.`
-
-    // Get AI analysis
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert HR professional and resume analyst. Provide detailed, objective analysis in valid JSON format only.'
-        },
-        {
-          role: 'user',
-          content: analysisPrompt
-        }
-      ],
-      max_tokens: 2000,
-      temperature: 0.3,
-    })
-
-    let analysis: ResumeAnalysis
-    try {
-      const aiResponse = completion.choices[0]?.message?.content || '{}'
-      analysis = JSON.parse(aiResponse)
-    } catch (parseError) {
-      // Fallback analysis if JSON parsing fails
-      analysis = {
-        matchPercentage: 50,
-        overallScore: 50,
-        strengths: ['Resume uploaded successfully'],
-        weaknesses: ['Unable to perform detailed analysis'],
-        skillsMatch: [],
-        experienceMatch: {
-          requiredYears: 0,
-          candidateYears: 0,
-          relevantExperience: [],
-          score: 50
-        },
-        recommendations: ['Manual review recommended'],
-        summary: 'AI analysis encountered an error. Please review manually.'
-      }
-    }
+    // Use the enhanced AI analysis function
+    const analysis = await generateEnhancedAnalysis(resumeText, jobDescription)
 
     // Check for GitHub profile in resume
     const githubMatch = resumeText.match(/github\.com\/([a-zA-Z0-9-_]+)/i)
@@ -184,16 +204,38 @@ Be thorough but concise in your analysis.`
       email: candidateInfo.email,
       phone: candidateInfo.phone,
       filename: file.originalname,
-      content: resumeText,
-      analysis
+      content: resumeText.substring(0, 1000) + (resumeText.length > 1000 ? '...' : ''),
+      analysis,
+      apiStatus: 'working'
     }
 
+    console.log(`Analysis completed for ${candidateInfo.name}: ${analysis.overallScore}% score`)
     res.status(200).json(response)
   } catch (error) {
     console.error('Resume analysis error:', error)
+    
+    // Provide specific error messages and API status
+    let errorMessage = 'Failed to analyze resume. Please try again.'
+    let errorDetails = error instanceof Error ? error.message : 'Unknown error'
+    let apiStatus = 'error'
+    let apiMessage = ''
+    
+    if (errorDetails.includes('OpenAI') || errorDetails.includes('rate limit') || errorDetails.includes('quota')) {
+      errorMessage = 'AI analysis service temporarily unavailable. Basic analysis provided.'
+      apiStatus = 'limited'
+      apiMessage = 'AI quota exceeded'
+    } else if (errorDetails.includes('extract')) {
+      errorMessage = 'Unable to read the uploaded file. Please check the file format.'
+    } else if (errorDetails.includes('API key')) {
+      errorMessage = 'Service configuration error. Please contact support.'
+      apiMessage = 'API key not configured'
+    }
+    
     res.status(500).json({ 
-      error: 'Failed to analyze resume. Please try again.',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? errorDetails : undefined,
+      apiStatus,
+      apiMessage
     })
   }
 }

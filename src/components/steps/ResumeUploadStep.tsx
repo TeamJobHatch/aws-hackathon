@@ -44,29 +44,60 @@ export default function ResumeUploadStep({
       const results = await Promise.all(uploadPromises)
       return results
     },
-    {
-      onSuccess: (results) => {
-        const newResumes: Resume[] = results.map(data => ({
-          id: data.id,
-          candidateName: data.candidateName || 'Unknown Candidate',
-          email: data.email,
-          phone: data.phone,
-          filename: data.filename,
-          content: data.content,
-          uploadedAt: new Date(),
-          analysis: data.analysis
-        }))
-        
-        const updatedResumes = [...state.resumes, ...newResumes]
-        updateState({ resumes: updatedResumes })
-        toast.success(`${newResumes.length} resume(s) uploaded successfully!`)
-        setIsUploading(false)
-      },
-      onError: (error: any) => {
-        toast.error(error.message || 'Failed to upload resumes. Please try again.')
-        setIsUploading(false)
-      }
-    }
+         {
+       onSuccess: (results) => {
+         const newResumes: Resume[] = results.map(data => ({
+           id: data.id,
+           candidateName: data.candidateName || 'Unknown Candidate',
+           email: data.email,
+           phone: data.phone,
+           filename: data.filename,
+           content: data.content,
+           uploadedAt: new Date(),
+           analysis: data.analysis
+         }))
+         
+         const updatedResumes = [...state.resumes, ...newResumes]
+         
+         // Check if any resume had API issues
+         let hasApiIssues = false
+         let apiStatus = 'working'
+         let apiMessage = ''
+         
+         for (const result of results) {
+           if (result.apiStatus && result.apiStatus !== 'working') {
+             hasApiIssues = true
+             apiStatus = result.apiStatus
+             apiMessage = result.apiMessage || ''
+             break
+           }
+         }
+         
+         updateState({ 
+           resumes: updatedResumes,
+           ...(hasApiIssues && { apiStatus, apiMessage })
+         })
+         
+         if (hasApiIssues) {
+           toast.success(`${newResumes.length} resume(s) uploaded! AI analysis ${apiStatus === 'limited' ? 'limited' : 'unavailable'} - using basic analysis.`)
+         } else {
+           toast.success(`${newResumes.length} resume(s) uploaded successfully!`)
+         }
+         
+         setIsUploading(false)
+       },
+       onError: (error: any) => {
+         const errorData = error.response?.data
+         if (errorData?.apiStatus) {
+           updateState({ 
+             apiStatus: errorData.apiStatus,
+             apiMessage: errorData.apiMessage
+           })
+         }
+         toast.error(error.message || 'Failed to upload resumes. Please try again.')
+         setIsUploading(false)
+       }
+     }
   )
 
   const onDrop = useCallback((acceptedFiles: File[]) => {

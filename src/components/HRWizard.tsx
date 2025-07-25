@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import WelcomeStep from './steps/WelcomeStep'
 import JobDescriptionStep from './steps/JobDescriptionStep'
 import ConfirmJobDetails from './steps/ConfirmJobDetails'
@@ -22,6 +22,8 @@ interface HRWizardState {
     status: 'pending' | 'active' | 'completed'
     details?: string
   }>
+  apiStatus: 'unknown' | 'working' | 'limited' | 'error'
+  apiMessage?: string
 }
 
 export default function HRWizard() {
@@ -30,8 +32,42 @@ export default function HRWizard() {
     jobDescription: null,
     resumes: [],
     analysisProgress: 0,
-    analysisSteps: []
+    analysisSteps: [],
+    apiStatus: 'unknown',
+    apiMessage: undefined
   })
+
+  // Test OpenAI API connection on component mount
+  useEffect(() => {
+    const testApiConnection = async () => {
+      try {
+        const response = await fetch('/api/test-openai')
+        const data = await response.json()
+        
+        if (data.success) {
+          updateState({ 
+            apiStatus: 'working',
+            apiMessage: 'AI services ready'
+          })
+        } else {
+          updateState({ 
+            apiStatus: data.apiStatus || 'error',
+            apiMessage: data.error || 'API test failed'
+          })
+        }
+      } catch (error) {
+        console.error('API test failed:', error)
+        updateState({ 
+          apiStatus: 'error',
+          apiMessage: 'Unable to test AI services'
+        })
+      }
+    }
+
+    // Test API connection after a short delay
+    const timer = setTimeout(testApiConnection, 1000)
+    return () => clearTimeout(timer)
+  }, [])
 
   const steps: Array<{ id: WizardStep; title: string; description: string }> = [
     { id: 'welcome', title: 'Welcome', description: 'Get started' },
@@ -50,8 +86,24 @@ export default function HRWizard() {
     setState(prev => ({ ...prev, ...updates }))
   }
 
+  const canNavigateToStep = (stepIndex: number): boolean => {
+    const currentIndex = getCurrentStepIndex()
+    
+    // Can always go back to completed steps
+    if (stepIndex < currentIndex) return true
+    
+    // Can go to current step
+    if (stepIndex === currentIndex) return true
+    
+    // Can't jump ahead to future steps
+    return false
+  }
+
   const goToStep = (step: WizardStep) => {
-    updateState({ currentStep: step })
+    const targetIndex = steps.findIndex(s => s.id === step)
+    if (canNavigateToStep(targetIndex)) {
+      updateState({ currentStep: step })
+    }
   }
 
   const goToNextStep = () => {
@@ -70,6 +122,41 @@ export default function HRWizard() {
     }
   }
 
+  const renderApiStatus = () => {
+    if (state.apiStatus === 'unknown') return null
+
+    const statusConfig = {
+      working: {
+        color: 'text-green-600 bg-green-50 border-green-200',
+        icon: '✓',
+        text: 'AI Services Online'
+      },
+      limited: {
+        color: 'text-yellow-600 bg-yellow-50 border-yellow-200',
+        icon: '⚠',
+        text: 'AI Services Limited'
+      },
+      error: {
+        color: 'text-red-600 bg-red-50 border-red-200',
+        icon: '✗',
+        text: 'AI Services Unavailable'
+      }
+    }
+
+    const config = statusConfig[state.apiStatus as keyof typeof statusConfig]
+    if (!config) return null
+
+    return (
+      <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg border text-sm font-medium ${config.color}`}>
+        <span className="mr-2">{config.icon}</span>
+        {config.text}
+        {state.apiMessage && (
+          <div className="text-xs mt-1 opacity-80">{state.apiMessage}</div>
+        )}
+      </div>
+    )
+  }
+
   const renderStepIndicator = () => {
     const currentIndex = getCurrentStepIndex()
     
@@ -79,19 +166,25 @@ export default function HRWizard() {
           const isActive = index === currentIndex
           const isCompleted = index < currentIndex
           const isPending = index > currentIndex
+          const canNavigate = canNavigateToStep(index)
           
           return (
             <div key={step.id} className="flex items-center">
               <div className="flex flex-col items-center">
-                <div
+                <button
+                  onClick={() => canNavigate ? goToStep(step.id) : null}
+                  disabled={!canNavigate}
                   className={`step-indicator ${
                     isCompleted ? 'step-completed' :
                     isActive ? 'step-active' : 'step-pending'
-                  }`}
+                  } ${canNavigate ? 'cursor-pointer hover:scale-110 transition-transform' : 'cursor-not-allowed opacity-50'}`}
+                  title={canNavigate ? `Go to ${step.title}` : `Complete previous steps to unlock ${step.title}`}
                 >
                   {isCompleted ? '✓' : index + 1}
-                </div>
-                <div className="text-xs text-gray-600 mt-1 hidden sm:block">
+                </button>
+                <div className={`text-xs mt-1 hidden sm:block ${
+                  canNavigate ? 'text-gray-600' : 'text-gray-400'
+                }`}>
                   {step.title}
                 </div>
               </div>
@@ -136,6 +229,9 @@ export default function HRWizard() {
 
   return (
     <div className="jobhatch-bg min-h-screen">
+      {/* API Status Indicator */}
+      {renderApiStatus()}
+      
       <div className="container-jobhatch py-8">
         {/* Hide step indicator on welcome page */}
         {state.currentStep !== 'welcome' && renderStepIndicator()}
