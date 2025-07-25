@@ -37,6 +37,14 @@ export interface LinkedInProfile {
   publicProfileUrl?: string
 }
 
+export interface CandidateLinks {
+  github?: string
+  linkedin?: string
+  portfolio?: string
+  website?: string
+  other: { url: string; type: string }[]
+}
+
 export interface UploadedFile {
   id: string
   name: string
@@ -98,6 +106,7 @@ export interface Resume {
   content: string
   uploadedAt: Date
   analysis?: ResumeAnalysis
+  links?: CandidateLinks
 }
 
 export interface ResumeAnalysis {
@@ -110,6 +119,9 @@ export interface ResumeAnalysis {
   recommendations: string[]
   summary: string
   githubAnalysis?: GitHubAnalysis
+  detailedInsights: string[]
+  technicalSkills: string[]
+  softSkills: string[]
 }
 
 export interface SkillMatch {
@@ -133,6 +145,9 @@ export interface GitHubAnalysis {
   technicalScore: number
   activityScore: number
   codeQualityIndicators: string[]
+  skillsEvidence?: string[]
+  projectHighlights?: string[]
+  recommendations?: string[]
 }
 
 export interface ApplicantComparison {

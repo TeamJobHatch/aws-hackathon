@@ -201,26 +201,72 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                   )}
 
                   {/* Platform Links */}
-                  <div className="flex items-center space-x-4">
-                    {resume.analysis?.githubAnalysis && (
+                  <div className="flex items-center flex-wrap gap-3">
+                    {resume.links?.github && (
                       <a
-                        href={resume.analysis.githubAnalysis.profile.html_url}
+                        href={resume.links.github}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center text-gray-600 hover:text-gray-900 text-sm"
+                        className="flex items-center text-gray-600 hover:text-blue-600 bg-gray-100 hover:bg-blue-50 px-2 py-1 rounded text-sm transition-colors"
+                        title="View GitHub Profile"
                       >
                         <Github className="h-4 w-4 mr-1" />
                         GitHub
                       </a>
                     )}
-                    <span className="flex items-center text-gray-400 text-sm">
-                      <Linkedin className="h-4 w-4 mr-1" />
-                      LinkedIn
-                    </span>
-                    <span className="flex items-center text-gray-400 text-sm">
-                      <Globe className="h-4 w-4 mr-1" />
-                      Portfolio
-                    </span>
+                    {resume.links?.linkedin && (
+                      <a
+                        href={resume.links.linkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-gray-600 hover:text-blue-600 bg-gray-100 hover:bg-blue-50 px-2 py-1 rounded text-sm transition-colors"
+                        title="View LinkedIn Profile"
+                      >
+                        <Linkedin className="h-4 w-4 mr-1" />
+                        LinkedIn
+                      </a>
+                    )}
+                    {resume.links?.portfolio && (
+                      <a
+                        href={resume.links.portfolio}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-gray-600 hover:text-purple-600 bg-gray-100 hover:bg-purple-50 px-2 py-1 rounded text-sm transition-colors"
+                        title="View Portfolio"
+                      >
+                        <Globe className="h-4 w-4 mr-1" />
+                        Portfolio
+                      </a>
+                    )}
+                    {resume.links?.website && (
+                      <a
+                        href={resume.links.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-gray-600 hover:text-green-600 bg-gray-100 hover:bg-green-50 px-2 py-1 rounded text-sm transition-colors"
+                        title="View Website"
+                      >
+                        <Globe className="h-4 w-4 mr-1" />
+                        Website
+                      </a>
+                    )}
+                    {resume.links?.other && resume.links.other.length > 0 && (
+                      <div className="flex items-center space-x-2">
+                        {resume.links.other.slice(0, 2).map((link, idx) => (
+                          <a
+                            key={idx}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center text-gray-600 hover:text-orange-600 bg-gray-100 hover:bg-orange-50 px-2 py-1 rounded text-sm transition-colors"
+                            title={`View ${link.type}`}
+                          >
+                            <Globe className="h-4 w-4 mr-1" />
+                            {link.type}
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -249,6 +295,60 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                   <p className="text-sm text-gray-700 bg-blue-50 p-4 rounded-lg">
                     {resume.analysis.summary}
                   </p>
+                </div>
+
+                {/* Detailed Insights */}
+                {resume.analysis.detailedInsights && resume.analysis.detailedInsights.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-3">Detailed Analysis</h4>
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <ul className="space-y-2">
+                        {resume.analysis.detailedInsights.map((insight: string, idx: number) => (
+                          <li key={idx} className="flex items-start text-sm text-gray-700">
+                            <span className="text-blue-500 mr-2 mt-0.5">•</span>
+                            {insight}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {/* Skills Assessment */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-semibold text-blue-600 mb-3">Technical Skills</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {resume.analysis.technicalSkills?.map((skill: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                      {(!resume.analysis.technicalSkills || resume.analysis.technicalSkills.length === 0) && (
+                        <span className="text-sm text-gray-500 italic">No technical skills identified</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-purple-600 mb-3">Soft Skills</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {resume.analysis.softSkills?.map((skill: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                      {(!resume.analysis.softSkills || resume.analysis.softSkills.length === 0) && (
+                        <span className="text-sm text-gray-500 italic">No soft skills identified</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Strengths & Weaknesses */}
@@ -285,8 +385,9 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                       <Github className="h-4 w-4 mr-2" />
                       GitHub Profile Analysis
                     </h4>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                      {/* GitHub Scores */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="text-center">
                           <div className="text-lg font-semibold text-gray-900">
                             {resume.analysis.githubAnalysis.technicalScore}/100
@@ -306,11 +407,78 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                           <div className="text-xs text-gray-600">Relevant Repos</div>
                         </div>
                       </div>
-                      <div className="text-sm text-gray-700">
-                        <strong>@{resume.analysis.githubAnalysis.username}</strong> • 
-                        {resume.analysis.githubAnalysis.profile.public_repos} repositories • 
-                        {resume.analysis.githubAnalysis.profile.followers} followers
+                      
+                      {/* Profile Info */}
+                      <div className="flex items-center justify-between p-3 bg-white rounded border">
+                        <div className="text-sm text-gray-700">
+                          <div className="font-medium">
+                            <a 
+                              href={resume.analysis.githubAnalysis.profile.html_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              @{resume.analysis.githubAnalysis.username}
+                            </a>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {resume.analysis.githubAnalysis.profile.public_repos} repositories • 
+                            {resume.analysis.githubAnalysis.profile.followers} followers
+                          </div>
+                        </div>
+                        {resume.analysis.githubAnalysis.profile.bio && (
+                          <div className="text-xs text-gray-600 max-w-xs truncate">
+                            {resume.analysis.githubAnalysis.profile.bio}
+                          </div>
+                        )}
                       </div>
+
+                      {/* Skills Evidence */}
+                      {resume.analysis.githubAnalysis.skillsEvidence && resume.analysis.githubAnalysis.skillsEvidence.length > 0 && (
+                        <div>
+                          <h5 className="font-medium text-gray-800 mb-2">Technical Skills Evidence</h5>
+                          <div className="flex flex-wrap gap-2">
+                            {resume.analysis.githubAnalysis.skillsEvidence.map((skill: string, idx: number) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center px-2 py-1 rounded text-xs bg-green-100 text-green-800"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Project Highlights */}
+                      {resume.analysis.githubAnalysis.projectHighlights && resume.analysis.githubAnalysis.projectHighlights.length > 0 && (
+                        <div>
+                          <h5 className="font-medium text-gray-800 mb-2">Notable Projects</h5>
+                          <ul className="space-y-1">
+                            {resume.analysis.githubAnalysis.projectHighlights.map((project: string, idx: number) => (
+                              <li key={idx} className="text-sm text-gray-700 flex items-start">
+                                <span className="text-blue-500 mr-2 mt-0.5">▶</span>
+                                {project}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Code Quality Indicators */}
+                      {resume.analysis.githubAnalysis.codeQualityIndicators.length > 0 && (
+                        <div>
+                          <h5 className="font-medium text-gray-800 mb-2">Code Quality Indicators</h5>
+                          <ul className="space-y-1">
+                            {resume.analysis.githubAnalysis.codeQualityIndicators.map((indicator: string, idx: number) => (
+                              <li key={idx} className="text-sm text-gray-700 flex items-start">
+                                <span className="text-yellow-500 mr-2 mt-0.5">⭐</span>
+                                {indicator}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

@@ -56,6 +56,59 @@ function extractCandidateInfo(resumeText: string): { name: string; email?: strin
   }
 }
 
+function extractCandidateLinks(resumeText: string): { github?: string; linkedin?: string; portfolio?: string; website?: string; other: { url: string; type: string }[] } {
+  const links = {
+    github: undefined as string | undefined,
+    linkedin: undefined as string | undefined,
+    portfolio: undefined as string | undefined,
+    website: undefined as string | undefined,
+    other: [] as { url: string; type: string }[]
+  }
+
+  // GitHub patterns
+  const githubMatches = resumeText.match(/(?:github\.com\/|github:?\s*)[\/]?([a-zA-Z0-9-_]+)/gi)
+  if (githubMatches) {
+    const username = githubMatches[0].replace(/.*github\.com\/|.*github:?\s*\/?/i, '').trim()
+    if (username && username !== 'github.com') {
+      links.github = `https://github.com/${username}`
+    }
+  }
+
+  // LinkedIn patterns
+  const linkedinMatches = resumeText.match(/(?:linkedin\.com\/in\/|linkedin:?\s*)[\/]?([a-zA-Z0-9-_]+)/gi)
+  if (linkedinMatches) {
+    const profile = linkedinMatches[0].replace(/.*linkedin\.com\/in\/|.*linkedin:?\s*\/?/i, '').trim()
+    if (profile && profile !== 'linkedin.com') {
+      links.linkedin = `https://linkedin.com/in/${profile}`
+    }
+  }
+
+  // Portfolio/Website patterns
+  const urlRegex = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=]*)/gi
+  const urls = resumeText.match(urlRegex) || []
+  
+  for (const url of urls) {
+    const lowerUrl = url.toLowerCase()
+    if (lowerUrl.includes('github.com') && !links.github) {
+      const username = url.match(/github\.com\/([a-zA-Z0-9-_]+)/)?.[1]
+      if (username) links.github = `https://github.com/${username}`
+    } else if (lowerUrl.includes('linkedin.com') && !links.linkedin) {
+      const profile = url.match(/linkedin\.com\/in\/([a-zA-Z0-9-_]+)/)?.[1]
+      if (profile) links.linkedin = `https://linkedin.com/in/${profile}`
+    } else if (lowerUrl.includes('portfolio') || lowerUrl.includes('personal') || lowerUrl.includes('me.') || lowerUrl.includes('dev.')) {
+      links.portfolio = url
+    } else if (!lowerUrl.includes('github.com') && !lowerUrl.includes('linkedin.com') && !lowerUrl.includes('google.com') && !lowerUrl.includes('stackoverflow.com')) {
+      if (lowerUrl.includes('portfolio') || lowerUrl.includes('blog') || lowerUrl.includes('website')) {
+        links.website = url
+      } else {
+        links.other.push({ url, type: 'website' })
+      }
+    }
+  }
+
+  return links
+}
+
 async function generateEnhancedAnalysis(resumeText: string, jobDescription: JobDescription): Promise<ResumeAnalysis> {
   // Check if OpenAI API key is available
   if (!process.env.OPENAI_API_KEY) {
@@ -82,9 +135,12 @@ Provide your analysis in this exact JSON format:
   "strengths": ["strength1", "strength2", "strength3"],
   "weaknesses": ["weakness1", "weakness2"],
   "recommendations": ["recommendation1", "recommendation2"],
+  "detailedInsights": ["insight1", "insight2", "insight3"],
+  "technicalSkills": ["skill1", "skill2", "skill3"],
+  "softSkills": ["soft skill1", "soft skill2"],
   "skillsMatch": [
-    {"skill": "JavaScript", "hasSkill": true, "level": "Advanced"},
-    {"skill": "React", "hasSkill": true, "level": "Intermediate"}
+    {"skill": "JavaScript", "found": true, "confidence": 90, "evidence": ["Used in Project X"]},
+    {"skill": "React", "found": true, "confidence": 85, "evidence": ["Experience section"]}
   ],
   "experienceMatch": {
     "score": 75,
@@ -128,6 +184,9 @@ Return only the JSON object, no other text.`
       strengths: Array.isArray(analysis.strengths) ? analysis.strengths : ['Professional background identified'],
       weaknesses: Array.isArray(analysis.weaknesses) ? analysis.weaknesses : ['Areas for improvement noted'],
       recommendations: Array.isArray(analysis.recommendations) ? analysis.recommendations : ['Consider for interview'],
+      detailedInsights: Array.isArray(analysis.detailedInsights) ? analysis.detailedInsights : ['Comprehensive analysis completed'],
+      technicalSkills: Array.isArray(analysis.technicalSkills) ? analysis.technicalSkills : [],
+      softSkills: Array.isArray(analysis.softSkills) ? analysis.softSkills : [],
       skillsMatch: Array.isArray(analysis.skillsMatch) ? analysis.skillsMatch : [],
       experienceMatch: analysis.experienceMatch && typeof analysis.experienceMatch === 'object' ? {
         score: Math.min(100, Math.max(0, Number(analysis.experienceMatch.score) || 0)),
@@ -185,17 +244,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     }
 
-    // Extract candidate info
+    // Extract candidate info and links
     const candidateInfo = extractCandidateInfo(resumeText)
+    const candidateLinks = extractCandidateLinks(resumeText)
 
     // Use the enhanced AI analysis function
-    const analysis = await generateEnhancedAnalysis(resumeText, jobDescription)
+    let analysis = await generateEnhancedAnalysis(resumeText, jobDescription)
 
-    // Check for GitHub profile in resume
-    const githubMatch = resumeText.match(/github\.com\/([a-zA-Z0-9-_]+)/i)
-    if (githubMatch) {
-      // TODO: Implement GitHub profile analysis
-      // This would fetch the user's GitHub profile and analyze repositories
+    // Analyze GitHub profile if found
+    if (candidateLinks.github) {
+      try {
+        const githubUsername = candidateLinks.github.split('/').pop()
+        if (githubUsername) {
+          const githubResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/github-analyzer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: githubUsername,
+              jobSkills: jobDescription.skills
+            })
+          })
+
+          if (githubResponse.ok) {
+            const githubData = await githubResponse.json()
+            analysis.githubAnalysis = githubData.analysis
+          }
+        }
+      } catch (error) {
+        console.log('GitHub analysis failed:', error)
+        // Continue without GitHub analysis
+      }
     }
 
     const response = {
@@ -206,6 +284,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       filename: file.originalname,
       content: resumeText.substring(0, 1000) + (resumeText.length > 1000 ? '...' : ''),
       analysis,
+      links: candidateLinks,
       apiStatus: 'working'
     }
 
