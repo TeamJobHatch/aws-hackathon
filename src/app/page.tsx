@@ -1,13 +1,9 @@
-import Dashboard from '@/components/Dashboard'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
+import HRWizard from '@/components/HRWizard'
 
 export default function Home() {
   return (
-    <main className="min-h-screen gradient-bg">
-      <Header />
-      <Dashboard />
-      <Footer />
+    <main className="min-h-screen">
+      <HRWizard />
     </main>
   )
 } 
