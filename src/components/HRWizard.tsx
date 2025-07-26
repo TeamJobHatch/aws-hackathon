@@ -10,6 +10,7 @@ import ModelSelectionStep from './steps/ModelSelectionStep'
 import ResumeUploadStep from './steps/ResumeUploadStep'
 import AnalysisProgressStep from './steps/AnalysisProgressStep'
 import ResultsStep from './steps/ResultsStep'
+import EnhancedResultsStep from './EnhancedResultsStep'
 import { JobDescription, Resume } from '@/types'
 
 export type WizardStep = 'welcome' | 'job-description' | 'confirm-details' | 'model-selection' | 'resume-upload' | 'analysis' | 'results'
@@ -392,7 +393,7 @@ export default function HRWizard() {
         case 'analysis':
           return <AnalysisProgressStep {...stepProps} />
         case 'results':
-          return <ResultsStep {...stepProps} />
+          return <EnhancedResultsStep {...stepProps} />
         default:
           return <WelcomeStep {...stepProps} />
       }

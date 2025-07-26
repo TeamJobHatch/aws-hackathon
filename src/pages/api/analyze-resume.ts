@@ -474,10 +474,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('No GitHub URL found in candidate links')
     }
 
-    // Analyze LinkedIn profile if found
+    // Analyze LinkedIn profile if found with chain of thought
     if (candidateLinks.linkedin) {
       try {
-        console.log('Analyzing LinkedIn profile:', candidateLinks.linkedin)
+        console.log('🔍 Starting LinkedIn profile analysis:', candidateLinks.linkedin)
+        
         const linkedinResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/linkedin-analyzer`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -490,14 +491,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (linkedinResponse.ok) {
           const linkedinData = await linkedinResponse.json()
           analysis.linkedinAnalysis = linkedinData.analysis
-          console.log('LinkedIn analysis completed')
+          console.log('✅ LinkedIn analysis completed successfully')
+          console.log('📊 LinkedIn scores:', {
+            honesty: linkedinData.analysis.honesty_score,
+            completeness: linkedinData.analysis.profile_completeness,
+            professional: linkedinData.analysis.professional_score
+          })
+          console.log('⚠️ Inconsistencies found:', linkedinData.analysis.inconsistencies.length)
         } else {
-          console.log('LinkedIn analysis failed with status:', linkedinResponse.status)
+          console.log('❌ LinkedIn analysis failed with status:', linkedinResponse.status)
+          const errorText = await linkedinResponse.text()
+          console.log('LinkedIn error response:', errorText)
         }
       } catch (error) {
-        console.log('LinkedIn analysis failed:', error)
+        console.log('❌ LinkedIn analysis failed with error:', error)
         // Continue without LinkedIn analysis
       }
+    } else {
+      console.log('ℹ️ No LinkedIn URL found for profile analysis')
     }
 
     const response = {

@@ -447,15 +447,15 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                         </div>
                       )}
 
-                      {/* Discrepancies */}
-                      {resume.analysis.linkedinAnalysis.discrepancies.length > 0 && (
+                      {/* Inconsistencies */}
+                      {resume.analysis.linkedinAnalysis.inconsistencies && resume.analysis.linkedinAnalysis.inconsistencies.length > 0 && (
                         <div>
-                          <h5 className="font-medium text-red-700 mb-2">⚠ Potential Discrepancies</h5>
+                          <h5 className="font-medium text-red-700 mb-2">⚠ Potential Inconsistencies</h5>
                           <ul className="space-y-1">
-                            {resume.analysis.linkedinAnalysis.discrepancies.map((discrepancy: string, idx: number) => (
+                            {resume.analysis.linkedinAnalysis.inconsistencies.map((inconsistency: any, idx: number) => (
                               <li key={idx} className="text-sm text-gray-700 flex items-start">
                                 <span className="text-red-500 mr-2 mt-0.5">⚠</span>
-                                {discrepancy}
+                                {inconsistency.description || inconsistency}
                               </li>
                             ))}
                           </ul>

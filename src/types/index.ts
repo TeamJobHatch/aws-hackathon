@@ -114,13 +114,57 @@ export interface Resume {
   links?: CandidateLinks
 }
 
+export interface LinkedInProfileData {
+  name: string
+  title: string
+  company: string
+  location: string
+  experience: Array<{
+    title: string
+    company: string
+    duration: string
+    description: string
+    startDate: string
+    endDate: string
+  }>
+  education: Array<{
+    institution: string
+    degree: string
+    field: string
+    startYear: string
+    endYear: string
+  }>
+  skills: string[]
+  certifications: string[]
+  languages: string[]
+  connections: number
+  profilePicture: boolean
+  headline: string
+  summary: string
+}
+
+export interface InconsistencyAnalysis {
+  type: 'critical' | 'moderate' | 'minor'
+  category: 'experience' | 'education' | 'skills' | 'personal' | 'timeline'
+  description: string
+  resumeValue: string
+  linkedinValue: string
+  impact: 'positive' | 'negative' | 'neutral'
+  recommendation: string
+}
+
 export interface LinkedInAnalysis {
   profile_url: string
   honesty_score: number
-  discrepancies: string[]
+  profile_data: LinkedInProfileData
+  inconsistencies: InconsistencyAnalysis[]
   verified_info: string[]
+  red_flags: string[]
+  positive_indicators: string[]
   recommendations: string[]
   profile_completeness: number
+  professional_score: number
+  chain_of_thought: string[]
 }
 
 export interface ResumeAnalysis {
