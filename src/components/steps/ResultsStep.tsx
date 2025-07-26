@@ -207,7 +207,7 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                         href={resume.links.github}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center text-white bg-gray-800 hover:bg-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
+                        className="flex items-center text-white bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 shadow-modern hover-lift"
                         title="View GitHub Profile"
                       >
                         <Github className="h-4 w-4 mr-2" />
@@ -219,7 +219,7 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                         href={resume.links.linkedin}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
+                        className="flex items-center text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 shadow-glow-blue hover-lift"
                         title="View LinkedIn Profile"
                       >
                         <Linkedin className="h-4 w-4 mr-2" />
@@ -231,7 +231,7 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                         href={resume.links.portfolio}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center text-white bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
+                        className="flex items-center text-white bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 shadow-modern hover-lift"
                         title="View Portfolio"
                       >
                         <Globe className="h-4 w-4 mr-2" />
@@ -243,7 +243,7 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                         href={resume.links.website}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center text-white bg-green-600 hover:bg-green-700 px-3 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
+                        className="flex items-center text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 shadow-modern hover-lift"
                         title="View Website"
                       >
                         <Globe className="h-4 w-4 mr-2" />

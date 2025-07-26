@@ -150,12 +150,12 @@ export default function HRWizard() {
 
     return (
       <motion.div 
-        className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg border text-sm font-medium shadow-lg ${config.color}`}
+        className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-2xl border text-sm font-medium liquid-glass shadow-modern ${config.color}`}
         initial={{ opacity: 0, x: 20, scale: 0.9 }}
         animate={{ opacity: 1, x: 0, scale: 1 }}
         exit={{ opacity: 0, x: 20, scale: 0.9 }}
         transition={{ duration: 0.3 }}
-        whileHover={{ scale: 1.05 }}
+        whileHover={{ scale: 1.05, y: -2 }}
       >
         <motion.span 
           className="mr-2"
@@ -192,7 +192,7 @@ export default function HRWizard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="bg-white/90 backdrop-blur-md rounded-full px-6 py-4 shadow-xl border border-white/20">
+        <div className="liquid-glass-strong rounded-full px-8 py-6 shadow-modern-lg border border-white/30 gradient-mesh">
           <div className="flex items-center space-x-2 sm:space-x-4">
             {steps.map((step, index) => {
               const isActive = index === currentIndex
@@ -404,11 +404,16 @@ export default function HRWizard() {
   }
 
   return (
-    <div className="jobhatch-bg min-h-screen">
+    <div className="jobhatch-bg min-h-screen particle-bg relative">
+      {/* Floating decorative elements */}
+      <div className="absolute top-10 left-10 w-20 h-20 bg-gradient-to-br from-orange-200 to-orange-300 rounded-full opacity-20 float-gentle"></div>
+      <div className="absolute top-1/4 right-16 w-16 h-16 bg-gradient-to-br from-blue-200 to-blue-300 rounded-full opacity-25 float-rotate"></div>
+      <div className="absolute bottom-1/4 left-1/4 w-12 h-12 bg-gradient-to-br from-purple-200 to-purple-300 rounded-full opacity-15 float-gentle"></div>
+      
       {/* API Status Indicator */}
       {renderApiStatus()}
       
-      <div className="container-jobhatch py-8">
+      <div className="container-jobhatch py-8 relative z-10">
         {/* Hide step indicator on welcome page */}
         {state.currentStep !== 'welcome' && renderStepIndicator()}
         

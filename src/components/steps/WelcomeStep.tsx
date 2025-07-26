@@ -183,7 +183,7 @@ export default function WelcomeStep({ goToNextStep }: WelcomeStepProps) {
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
             <motion.span 
-              className="block gradient-text"
+              className="block prismatic-text"
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2, duration: 0.6 }}
@@ -191,7 +191,7 @@ export default function WelcomeStep({ goToNextStep }: WelcomeStepProps) {
               Find Your
             </motion.span>
             <motion.span 
-              className="block text-blue-600"
+              className="block gradient-text"
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4, duration: 0.6 }}
@@ -199,7 +199,7 @@ export default function WelcomeStep({ goToNextStep }: WelcomeStepProps) {
               Perfect Candidate
             </motion.span>
             <motion.span 
-              className="block gradient-text"
+              className="block prismatic-text"
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.6 }}
@@ -236,7 +236,7 @@ export default function WelcomeStep({ goToNextStep }: WelcomeStepProps) {
               transition={{ delay: 0.8 + index * 0.2, duration: 0.6 }}
               whileHover={{ y: -10 }}
             >
-              <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300 overflow-hidden">
+              <div className="relative liquid-glass-strong rounded-3xl p-8 shadow-modern-lg morph-hover transition-all duration-300 overflow-hidden reflection-card">
                 {/* Gradient Background on Hover */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
                 
@@ -271,8 +271,8 @@ export default function WelcomeStep({ goToNextStep }: WelcomeStepProps) {
         >
           <motion.button
             onClick={goToNextStep}
-            className="group relative inline-flex items-center px-12 py-4 text-xl font-bold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-full shadow-2xl hover:shadow-orange-500/25 transition-all duration-300 overflow-hidden"
-            whileHover={{ scale: 1.05 }}
+            className="btn-jobhatch-primary shadow-glow-orange group text-xl relative overflow-hidden"
+            whileHover={{ scale: 1.05, y: -3 }}
             whileTap={{ scale: 0.95 }}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -319,7 +319,7 @@ export default function WelcomeStep({ goToNextStep }: WelcomeStepProps) {
               whileHover={{ y: -5 }}
             >
               <motion.div
-                className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-3 group-hover:shadow-lg transition-all duration-300"
+                className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-3 shadow-glow-blue transition-all duration-300"
                 whileHover={{ scale: 1.1, rotate: 360 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
               >
