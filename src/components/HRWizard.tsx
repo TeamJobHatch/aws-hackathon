@@ -6,12 +6,13 @@ import { Check, Circle } from 'lucide-react'
 import WelcomeStep from './steps/WelcomeStep'
 import JobDescriptionStep from './steps/JobDescriptionStep'
 import ConfirmJobDetails from './steps/ConfirmJobDetails'
+import ModelSelectionStep from './steps/ModelSelectionStep'
 import ResumeUploadStep from './steps/ResumeUploadStep'
 import AnalysisProgressStep from './steps/AnalysisProgressStep'
 import ResultsStep from './steps/ResultsStep'
 import { JobDescription, Resume } from '@/types'
 
-export type WizardStep = 'welcome' | 'job-description' | 'confirm-details' | 'resume-upload' | 'analysis' | 'results'
+export type WizardStep = 'welcome' | 'job-description' | 'confirm-details' | 'model-selection' | 'resume-upload' | 'analysis' | 'results'
 
 interface HRWizardState {
   currentStep: WizardStep
@@ -26,6 +27,7 @@ interface HRWizardState {
   }>
   apiStatus: 'unknown' | 'working' | 'limited' | 'error'
   apiMessage?: string
+  selectedAIModel: 'openai' | 'gemini'
 }
 
 export default function HRWizard() {
@@ -36,25 +38,31 @@ export default function HRWizard() {
     analysisProgress: 0,
     analysisSteps: [],
     apiStatus: 'unknown',
-    apiMessage: undefined
+    apiMessage: undefined,
+    selectedAIModel: 'openai'
   })
 
-  // Test OpenAI API connection on component mount
+  // Test AI models connection on component mount
   useEffect(() => {
     const testApiConnection = async () => {
       try {
-        const response = await fetch('/api/test-openai')
+        const response = await fetch('/api/test-ai-models')
         const data = await response.json()
         
-        if (data.success) {
+        if (data.success && data.workingModels > 0) {
           updateState({ 
             apiStatus: 'working',
-            apiMessage: 'AI services ready'
+            apiMessage: `${data.workingModels} AI model(s) ready`
+          })
+        } else if (data.workingModels > 0) {
+          updateState({ 
+            apiStatus: 'limited',
+            apiMessage: `${data.workingModels} of ${data.totalModels} models available`
           })
         } else {
           updateState({ 
-            apiStatus: data.apiStatus || 'error',
-            apiMessage: data.error || 'API test failed'
+            apiStatus: 'error',
+            apiMessage: 'No AI models available'
           })
         }
       } catch (error) {
@@ -75,6 +83,7 @@ export default function HRWizard() {
     { id: 'welcome', title: 'Welcome', description: 'Get started' },
     { id: 'job-description', title: 'Job Description', description: 'Upload or enter job details' },
     { id: 'confirm-details', title: 'Confirm Details', description: 'Review job information' },
+    { id: 'model-selection', title: 'AI Model', description: 'Choose analysis model' },
     { id: 'resume-upload', title: 'Upload Resumes', description: 'Add candidate resumes' },
     { id: 'analysis', title: 'AI Analysis', description: 'Processing candidates' },
     { id: 'results', title: 'Results', description: 'View rankings and insights' }
@@ -376,6 +385,8 @@ export default function HRWizard() {
           return <JobDescriptionStep {...stepProps} />
         case 'confirm-details':
           return <ConfirmJobDetails {...stepProps} />
+        case 'model-selection':
+          return <ModelSelectionStep {...stepProps} />
         case 'resume-upload':
           return <ResumeUploadStep {...stepProps} />
         case 'analysis':

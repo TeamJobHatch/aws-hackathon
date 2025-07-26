@@ -187,4 +187,51 @@ export interface HRAnalysisRequest {
   jobDescription: JobDescription
   resumes: Resume[]
   analysisType: 'individual' | 'comparison' | 'ranking'
-} 
+  aiModel?: 'openai' | 'gemini'
+}
+
+// AI Model Types
+export interface AIModelConfig {
+  id: 'openai' | 'gemini'
+  name: string
+  displayName: string
+  description: string
+  status: 'working' | 'limited' | 'error' | 'unknown'
+  available: boolean
+  features: {
+    analysis: boolean
+    embedding: boolean
+    structured: boolean
+  }
+}
+
+export interface ModelTestResults {
+  success: boolean
+  overallStatus: string
+  workingModels: number
+  totalModels: number
+  recommendation: string
+  models: {
+    openai: ModelTestResult
+    gemini: ModelTestResult
+  }
+}
+
+export interface ModelTestResult {
+  model: string
+  success: boolean
+  apiStatus: 'working' | 'limited' | 'error'
+  message: string
+  response?: string
+  details?: string
+  keyExists: boolean
+  keyPrefix?: string
+}
+
+// Enhanced Resume Analysis with Model Info
+export interface EnhancedResumeAnalysis extends ResumeAnalysis {
+  aiModel: 'openai' | 'gemini'
+  modelVersion: string
+  processingTime: number
+  confidence: number
+}
