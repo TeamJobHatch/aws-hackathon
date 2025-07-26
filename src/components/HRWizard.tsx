@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Check, Circle } from 'lucide-react'
 import WelcomeStep from './steps/WelcomeStep'
 import JobDescriptionStep from './steps/JobDescriptionStep'
 import ConfirmJobDetails from './steps/ConfirmJobDetails'
@@ -147,13 +149,36 @@ export default function HRWizard() {
     if (!config) return null
 
     return (
-      <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg border text-sm font-medium ${config.color}`}>
-        <span className="mr-2">{config.icon}</span>
+      <motion.div 
+        className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg border text-sm font-medium shadow-lg ${config.color}`}
+        initial={{ opacity: 0, x: 20, scale: 0.9 }}
+        animate={{ opacity: 1, x: 0, scale: 1 }}
+        exit={{ opacity: 0, x: 20, scale: 0.9 }}
+        transition={{ duration: 0.3 }}
+        whileHover={{ scale: 1.05 }}
+      >
+        <motion.span 
+          className="mr-2"
+          animate={{ rotate: state.apiStatus === 'working' ? [0, 360] : 0 }}
+          transition={{ 
+            duration: state.apiStatus === 'working' ? 2 : 0.3, 
+            repeat: state.apiStatus === 'working' ? Infinity : 0 
+          }}
+        >
+          {config.icon}
+        </motion.span>
         {config.text}
         {state.apiMessage && (
-          <div className="text-xs mt-1 opacity-80">{state.apiMessage}</div>
+          <motion.div 
+            className="text-xs mt-1 opacity-80"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 0.8, height: 'auto' }}
+            transition={{ delay: 0.2 }}
+          >
+            {state.apiMessage}
+          </motion.div>
         )}
-      </div>
+      </motion.div>
     )
   }
 
@@ -161,42 +186,139 @@ export default function HRWizard() {
     const currentIndex = getCurrentStepIndex()
     
     return (
-      <div className="flex items-center justify-center space-x-4 mb-8">
-        {steps.map((step, index) => {
-          const isActive = index === currentIndex
-          const isCompleted = index < currentIndex
-          const isPending = index > currentIndex
-          const canNavigate = canNavigateToStep(index)
-          
-          return (
-            <div key={step.id} className="flex items-center">
-              <div className="flex flex-col items-center">
-                <button
-                  onClick={() => canNavigate ? goToStep(step.id) : null}
-                  disabled={!canNavigate}
-                  className={`step-indicator ${
-                    isCompleted ? 'step-completed' :
-                    isActive ? 'step-active' : 'step-pending'
-                  } ${canNavigate ? 'cursor-pointer hover:scale-110 transition-transform' : 'cursor-not-allowed opacity-50'}`}
-                  title={canNavigate ? `Go to ${step.title}` : `Complete previous steps to unlock ${step.title}`}
+      <motion.div 
+        className="flex items-center justify-center space-x-2 sm:space-x-4 mb-8 px-4"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="bg-white/90 backdrop-blur-md rounded-full px-6 py-4 shadow-xl border border-white/20">
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {steps.map((step, index) => {
+              const isActive = index === currentIndex
+              const isCompleted = index < currentIndex
+              const canNavigate = canNavigateToStep(index)
+              
+              return (
+                <motion.div
+                  key={step.id}
+                  className="flex items-center"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: index * 0.1, duration: 0.3 }}
                 >
-                  {isCompleted ? '✓' : index + 1}
-                </button>
-                <div className={`text-xs mt-1 hidden sm:block ${
-                  canNavigate ? 'text-gray-600' : 'text-gray-400'
-                }`}>
-                  {step.title}
-                </div>
-              </div>
-              {index < steps.length - 1 && (
-                <div className={`w-8 h-0.5 mx-2 ${
-                  isCompleted ? 'bg-green-500' : 'bg-gray-200'
-                }`} />
-              )}
-            </div>
-          )
-        })}
-      </div>
+                  {/* Step Circle */}
+                  <div className="flex flex-col items-center relative group">
+                    <motion.button
+                      onClick={() => canNavigate ? goToStep(step.id) : null}
+                      disabled={!canNavigate}
+                      className={`relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 font-bold text-sm transition-all duration-300 ${
+                        isCompleted 
+                          ? 'bg-green-500 border-green-500 text-white shadow-lg' 
+                          : isActive 
+                          ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/25' 
+                          : 'bg-white border-gray-300 text-gray-500'
+                      } ${canNavigate ? 'cursor-pointer hover:scale-110' : 'cursor-not-allowed opacity-50'}`}
+                      whileHover={canNavigate ? { scale: 1.1 } : {}}
+                      whileTap={canNavigate ? { scale: 0.95 } : {}}
+                      title={canNavigate ? `Go to ${step.title}` : `Complete previous steps to unlock ${step.title}`}
+                    >
+                      <AnimatePresence mode="wait">
+                        {isCompleted ? (
+                          <motion.div
+                            key="check"
+                            initial={{ scale: 0, rotate: -90 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            exit={{ scale: 0, rotate: 90 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                          >
+                            <Check className="h-5 w-5 sm:h-6 sm:w-6" />
+                          </motion.div>
+                        ) : (
+                          <motion.span
+                            key="number"
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                          >
+                            {index + 1}
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Active Step Pulse Effect */}
+                      {isActive && (
+                        <motion.div
+                          className="absolute inset-0 rounded-full bg-orange-500"
+                          animate={{ 
+                            scale: [1, 1.4, 1], 
+                            opacity: [0.7, 0, 0.7] 
+                          }}
+                          transition={{ 
+                            repeat: Infinity, 
+                            duration: 2,
+                            ease: "easeInOut"
+                          }}
+                        />
+                      )}
+                    </motion.button>
+
+                    {/* Step Title */}
+                    <motion.div
+                      className={`text-xs mt-2 hidden sm:block font-medium transition-colors duration-200 ${
+                        isActive ? 'text-orange-600' : 
+                        isCompleted ? 'text-green-600' : 
+                        canNavigate ? 'text-gray-600' : 'text-gray-400'
+                      }`}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 + 0.2 }}
+                    >
+                      {step.title}
+                    </motion.div>
+
+                    {/* Mobile Step Title Tooltip */}
+                    <div className="sm:hidden absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                      <div className="bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                        {step.title}
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 -mt-1" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Connection Line */}
+                  {index < steps.length - 1 && (
+                    <motion.div
+                      className={`w-4 sm:w-8 h-0.5 mx-1 sm:mx-2 transition-all duration-500 ${
+                        isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                      }`}
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={{ delay: index * 0.1 + 0.3, duration: 0.5 }}
+                    />
+                  )}
+                </motion.div>
+              )
+            })}
+          </div>
+
+          {/* Progress Bar */}
+          <motion.div 
+            className="mt-4 h-1 bg-gray-200 rounded-full overflow-hidden"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ delay: 0.8, duration: 0.5 }}
+          >
+            <motion.div
+              className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full"
+              initial={{ width: '0%' }}
+              animate={{ width: `${(currentIndex / (steps.length - 1)) * 100}%` }}
+              transition={{ duration: 0.8, ease: "easeInOut", delay: 0.5 }}
+            />
+          </motion.div>
+        </div>
+      </motion.div>
     )
   }
 
@@ -209,22 +331,63 @@ export default function HRWizard() {
       goToStep
     }
 
-    switch (state.currentStep) {
-      case 'welcome':
-        return <WelcomeStep {...stepProps} />
-      case 'job-description':
-        return <JobDescriptionStep {...stepProps} />
-      case 'confirm-details':
-        return <ConfirmJobDetails {...stepProps} />
-      case 'resume-upload':
-        return <ResumeUploadStep {...stepProps} />
-      case 'analysis':
-        return <AnalysisProgressStep {...stepProps} />
-      case 'results':
-        return <ResultsStep {...stepProps} />
-      default:
-        return <WelcomeStep {...stepProps} />
+    const pageVariants = {
+      initial: { 
+        opacity: 0, 
+        x: 50,
+        scale: 0.95
+      },
+      in: { 
+        opacity: 1, 
+        x: 0,
+        scale: 1
+      },
+      out: { 
+        opacity: 0, 
+        x: -50,
+        scale: 0.95
+      }
     }
+
+    const pageTransition = {
+      type: "tween" as const,
+      ease: "anticipate" as const,
+      duration: 0.4
+    }
+
+    const getStepComponent = () => {
+      switch (state.currentStep) {
+        case 'welcome':
+          return <WelcomeStep {...stepProps} />
+        case 'job-description':
+          return <JobDescriptionStep {...stepProps} />
+        case 'confirm-details':
+          return <ConfirmJobDetails {...stepProps} />
+        case 'resume-upload':
+          return <ResumeUploadStep {...stepProps} />
+        case 'analysis':
+          return <AnalysisProgressStep {...stepProps} />
+        case 'results':
+          return <ResultsStep {...stepProps} />
+        default:
+          return <WelcomeStep {...stepProps} />
+      }
+    }
+
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={state.currentStep}
+          initial="initial"
+          animate="in"
+          exit="out"
+          variants={pageVariants}
+          transition={pageTransition}
+        >
+          {getStepComponent()}
+        </motion.div>
+      </AnimatePresence>
+    )
   }
 
   return (

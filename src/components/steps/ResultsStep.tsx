@@ -200,18 +200,18 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                     </div>
                   )}
 
-                  {/* Platform Links */}
-                  <div className="flex items-center flex-wrap gap-3">
+                  {/* Platform Links - AI Extracted */}
+                  <div className="flex items-center flex-wrap gap-3 mb-3">
                     {resume.links?.github && (
                       <a
                         href={resume.links.github}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center text-gray-600 hover:text-blue-600 bg-gray-100 hover:bg-blue-50 px-2 py-1 rounded text-sm transition-colors"
+                        className="flex items-center text-white bg-gray-800 hover:bg-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
                         title="View GitHub Profile"
                       >
-                        <Github className="h-4 w-4 mr-1" />
-                        GitHub
+                        <Github className="h-4 w-4 mr-2" />
+                        GitHub Profile
                       </a>
                     )}
                     {resume.links?.linkedin && (
@@ -219,11 +219,11 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                         href={resume.links.linkedin}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center text-gray-600 hover:text-blue-600 bg-gray-100 hover:bg-blue-50 px-2 py-1 rounded text-sm transition-colors"
+                        className="flex items-center text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
                         title="View LinkedIn Profile"
                       >
-                        <Linkedin className="h-4 w-4 mr-1" />
-                        LinkedIn
+                        <Linkedin className="h-4 w-4 mr-2" />
+                        LinkedIn Profile
                       </a>
                     )}
                     {resume.links?.portfolio && (
@@ -231,10 +231,10 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                         href={resume.links.portfolio}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center text-gray-600 hover:text-purple-600 bg-gray-100 hover:bg-purple-50 px-2 py-1 rounded text-sm transition-colors"
+                        className="flex items-center text-white bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
                         title="View Portfolio"
                       >
-                        <Globe className="h-4 w-4 mr-1" />
+                        <Globe className="h-4 w-4 mr-2" />
                         Portfolio
                       </a>
                     )}
@@ -243,10 +243,10 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                         href={resume.links.website}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center text-gray-600 hover:text-green-600 bg-gray-100 hover:bg-green-50 px-2 py-1 rounded text-sm transition-colors"
+                        className="flex items-center text-white bg-green-600 hover:bg-green-700 px-3 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
                         title="View Website"
                       >
-                        <Globe className="h-4 w-4 mr-1" />
+                        <Globe className="h-4 w-4 mr-2" />
                         Website
                       </a>
                     )}
@@ -258,16 +258,31 @@ export default function ResultsStep({ state, updateState, goToStep }: ResultsSte
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center text-gray-600 hover:text-orange-600 bg-gray-100 hover:bg-orange-50 px-2 py-1 rounded text-sm transition-colors"
+                            className="flex items-center text-white bg-orange-600 hover:bg-orange-700 px-3 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
                             title={`View ${link.type}`}
                           >
-                            <Globe className="h-4 w-4 mr-1" />
-                            {link.type}
+                            <Globe className="h-4 w-4 mr-2" />
+                            {link.type.charAt(0).toUpperCase() + link.type.slice(1)}
                           </a>
                         ))}
                       </div>
                     )}
                   </div>
+                  
+                  {/* Debug: Always show link status */}
+                  
+                  {(!resume.links?.github && !resume.links?.linkedin && !resume.links?.portfolio && !resume.links?.website && (!resume.links?.other || resume.links.other.length === 0)) && (
+                    <div className="text-sm text-orange-600 italic mb-3 bg-orange-50 p-2 rounded">
+                      ⚠ No professional links found in resume - Check console for debugging details
+                    </div>
+                  )}
+                  
+                  {/* Debug info for development */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <div className="text-xs text-gray-400 mb-2">
+                      Debug: Links object = {JSON.stringify(resume.links)}
+                    </div>
+                  )}
                 </div>
               </div>
 
