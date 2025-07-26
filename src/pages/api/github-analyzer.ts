@@ -180,14 +180,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'GitHub username is required' })
     }
 
+    // Validate username format
+    if (!/^[a-zA-Z0-9-_]+$/.test(username) || 
+        username.length === 0 || 
+        username.length > 39 ||
+        username.includes('.') ||
+        username.includes('@')) {
+      console.log(`Invalid GitHub username format: ${username}`)
+      return res.status(400).json({ 
+        error: 'Invalid GitHub username format',
+        details: `Username "${username}" contains invalid characters or format`,
+        apiStatus: 'error'
+      })
+    }
+
+    console.log(`Starting GitHub analysis for username: ${username}`)
+
     // Fetch GitHub profile
     const profile = await fetchGitHubProfile(username)
+    console.log(`Fetched profile for ${username}: ${profile.public_repos} repos, ${profile.followers} followers`)
     
     // Fetch repositories
     const repositories = await fetchGitHubRepositories(username)
+    console.log(`Fetched ${repositories.length} repositories for ${username}`)
     
     // Analyze the profile
     const analysis = await analyzeGitHubProfile(profile, repositories, jobSkills)
+    console.log(`Analysis completed for ${username}: Technical=${analysis.technicalScore}, Activity=${analysis.activityScore}`)
 
     res.status(200).json({
       success: true,
@@ -196,12 +215,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
 
   } catch (error: any) {
-    console.error('GitHub analyzer error:', error)
+    console.error('GitHub analyzer error for username:', req.body.username, 'Error:', error.message)
+    
+    // Check if it's a "user not found" error
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'GitHub user not found',
+        details: `No GitHub user found with username: ${req.body.username}`,
+        apiStatus: 'error'
+      })
+    }
     
     res.status(500).json({
       error: 'Failed to analyze GitHub profile',
       details: error.message,
-      apiStatus: 'error'
+      apiStatus: 'error',
+      username: req.body.username
     })
   }
 } 

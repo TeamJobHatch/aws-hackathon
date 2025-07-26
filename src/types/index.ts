@@ -26,6 +26,11 @@ export interface Repository {
   stargazers_count: number
   forks_count: number
   updated_at: string
+  created_at?: string
+  pushed_at?: string
+  topics?: string[]
+  size?: number
+  open_issues_count?: number
 }
 
 export interface LinkedInProfile {
@@ -109,6 +114,15 @@ export interface Resume {
   links?: CandidateLinks
 }
 
+export interface LinkedInAnalysis {
+  profile_url: string
+  honesty_score: number
+  discrepancies: string[]
+  verified_info: string[]
+  recommendations: string[]
+  profile_completeness: number
+}
+
 export interface ResumeAnalysis {
   matchPercentage: number
   overallScore: number
@@ -119,6 +133,7 @@ export interface ResumeAnalysis {
   recommendations: string[]
   summary: string
   githubAnalysis?: GitHubAnalysis
+  linkedinAnalysis?: LinkedInAnalysis
   detailedInsights: string[]
   technicalSkills: string[]
   softSkills: string[]
@@ -148,6 +163,10 @@ export interface GitHubAnalysis {
   skillsEvidence?: string[]
   projectHighlights?: string[]
   recommendations?: string[]
+  languageBreakdown?: Record<string, number>
+  projectCategories?: string[]
+  collaborationScore?: number
+  portfolioQuality?: number
 }
 
 export interface ApplicantComparison {

@@ -65,47 +65,123 @@ function extractCandidateLinks(resumeText: string): { github?: string; linkedin?
     other: [] as { url: string; type: string }[]
   }
 
-  // GitHub patterns
-  const githubMatches = resumeText.match(/(?:github\.com\/|github:?\s*)[\/]?([a-zA-Z0-9-_]+)/gi)
-  if (githubMatches) {
-    const username = githubMatches[0].replace(/.*github\.com\/|.*github:?\s*\/?/i, '').trim()
-    if (username && username !== 'github.com') {
-      links.github = `https://github.com/${username}`
-    }
-  }
+  console.log('Starting link extraction from resume text...')
 
-  // LinkedIn patterns
-  const linkedinMatches = resumeText.match(/(?:linkedin\.com\/in\/|linkedin:?\s*)[\/]?([a-zA-Z0-9-_]+)/gi)
-  if (linkedinMatches) {
-    const profile = linkedinMatches[0].replace(/.*linkedin\.com\/in\/|.*linkedin:?\s*\/?/i, '').trim()
-    if (profile && profile !== 'linkedin.com') {
-      links.linkedin = `https://linkedin.com/in/${profile}`
-    }
-  }
-
-  // Portfolio/Website patterns
+  // First extract all URLs using a comprehensive regex
   const urlRegex = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=]*)/gi
   const urls = resumeText.match(urlRegex) || []
   
+  console.log('Found URLs:', urls)
+
+  // Process full URLs first (highest priority)
   for (const url of urls) {
     const lowerUrl = url.toLowerCase()
-    if (lowerUrl.includes('github.com') && !links.github) {
-      const username = url.match(/github\.com\/([a-zA-Z0-9-_]+)/)?.[1]
-      if (username) links.github = `https://github.com/${username}`
-    } else if (lowerUrl.includes('linkedin.com') && !links.linkedin) {
-      const profile = url.match(/linkedin\.com\/in\/([a-zA-Z0-9-_]+)/)?.[1]
-      if (profile) links.linkedin = `https://linkedin.com/in/${profile}`
-    } else if (lowerUrl.includes('portfolio') || lowerUrl.includes('personal') || lowerUrl.includes('me.') || lowerUrl.includes('dev.')) {
+    
+    if (lowerUrl.includes('github.com/') && !links.github) {
+      const githubMatch = url.match(/github\.com\/([a-zA-Z0-9-_]+)(?:\/|$)/i)
+      if (githubMatch && githubMatch[1]) {
+        const username = githubMatch[1].trim()
+        // Exclude common GitHub pages that aren't user profiles
+        if (username && 
+            username !== 'github' && 
+            username !== 'www' &&
+            username !== 'api' &&
+            username !== 'docs' &&
+            !username.includes('.') &&
+            username.length > 1) {
+          links.github = `https://github.com/${username}`
+          console.log('GitHub URL extracted:', links.github, 'from:', url)
+        }
+      }
+    } 
+    else if (lowerUrl.includes('linkedin.com/in/') && !links.linkedin) {
+      const linkedinMatch = url.match(/linkedin\.com\/in\/([a-zA-Z0-9-_]+)(?:\/|$)/i)
+      if (linkedinMatch && linkedinMatch[1]) {
+        const profile = linkedinMatch[1].trim()
+        if (profile && profile !== 'linkedin' && profile.length > 1) {
+          links.linkedin = `https://linkedin.com/in/${profile}`
+          console.log('LinkedIn URL extracted:', links.linkedin, 'from:', url)
+        }
+      }
+    } 
+    else if ((lowerUrl.includes('portfolio') || lowerUrl.includes('personal') || 
+              lowerUrl.includes('.dev') || lowerUrl.includes('.me') || 
+              lowerUrl.includes('site') || lowerUrl.includes('blog')) && !links.portfolio) {
       links.portfolio = url
-    } else if (!lowerUrl.includes('github.com') && !lowerUrl.includes('linkedin.com') && !lowerUrl.includes('google.com') && !lowerUrl.includes('stackoverflow.com')) {
-      if (lowerUrl.includes('portfolio') || lowerUrl.includes('blog') || lowerUrl.includes('website')) {
+      console.log('Portfolio URL extracted:', url)
+    } 
+    else if (!lowerUrl.includes('github.com') && !lowerUrl.includes('linkedin.com') && 
+             !lowerUrl.includes('google.com') && !lowerUrl.includes('stackoverflow.com') && 
+             !lowerUrl.includes('facebook.com') && !lowerUrl.includes('twitter.com')) {
+      if (!links.website && (lowerUrl.includes('www') || lowerUrl.match(/^https?:\/\/[a-zA-Z0-9-_]+\.[a-z]+/))) {
         links.website = url
+        console.log('Website URL extracted:', url)
       } else {
         links.other.push({ url, type: 'website' })
       }
     }
   }
 
+  // Only try text patterns if we haven't found URLs already
+  if (!links.github) {
+    // Look for GitHub username patterns without full URLs
+    const githubPatterns = [
+      /GitHub:\s*([a-zA-Z0-9-_]+)/i,
+      /Github:\s*([a-zA-Z0-9-_]+)/i,
+      /github:\s*([a-zA-Z0-9-_]+)/i,
+      /GitHub:\s*@([a-zA-Z0-9-_]+)/i,
+      /(?:^|\s)github\.com\/([a-zA-Z0-9-_]+)(?:\s|$)/gi
+    ]
+    
+    for (const pattern of githubPatterns) {
+      const match = resumeText.match(pattern)
+      if (match && match[1]) {
+        const username = match[1].trim()
+        // Exclude email domains and common words
+        if (username && 
+            username !== 'github' && 
+            username !== 'com' &&
+            !username.includes('.') &&
+            !username.includes('@') &&
+            username.length > 1 &&
+            username.length < 40 &&
+            !/\.(edu|com|org|net)$/.test(username)) {
+          links.github = `https://github.com/${username}`
+          console.log('GitHub username pattern extracted:', username, 'using pattern:', pattern.source)
+          break
+        }
+      }
+    }
+  }
+
+  if (!links.linkedin) {
+    // Look for LinkedIn profile patterns without full URLs
+    const linkedinPatterns = [
+      /LinkedIn:\s*([a-zA-Z0-9-_]+)/i,
+      /linkedin:\s*([a-zA-Z0-9-_]+)/i,
+      /LinkedIn:\s*@([a-zA-Z0-9-_]+)/i,
+      /(?:^|\s)linkedin\.com\/in\/([a-zA-Z0-9-_]+)(?:\s|$)/gi
+    ]
+    
+    for (const pattern of linkedinPatterns) {
+      const match = resumeText.match(pattern)
+      if (match && match[1]) {
+        const profile = match[1].trim()
+        if (profile && 
+            profile !== 'linkedin' && 
+            !profile.includes('.') &&
+            !profile.includes('@') &&
+            profile.length > 1 &&
+            profile.length < 40) {
+          links.linkedin = `https://linkedin.com/in/${profile}`
+          console.log('LinkedIn profile pattern extracted:', profile, 'using pattern:', pattern.source)
+          break
+        }
+      }
+    }
+  }
+
+  console.log('Final extracted links:', links)
   return links
 }
 
@@ -255,7 +331,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (candidateLinks.github) {
       try {
         const githubUsername = candidateLinks.github.split('/').pop()
-        if (githubUsername) {
+        console.log('Extracted GitHub username from URL:', githubUsername, 'from URL:', candidateLinks.github)
+        
+        // Validate GitHub username
+        if (githubUsername && 
+            githubUsername.length > 0 && 
+            githubUsername.length < 40 && 
+            !/\.(edu|com|org|net|gov)$/.test(githubUsername) &&
+            !githubUsername.includes('@') &&
+            !githubUsername.includes('.') &&
+            /^[a-zA-Z0-9-_]+$/.test(githubUsername)) {
+          
+          console.log('Valid GitHub username detected, analyzing:', githubUsername)
           const githubResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/github-analyzer`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -267,12 +354,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           if (githubResponse.ok) {
             const githubData = await githubResponse.json()
-            analysis.githubAnalysis = githubData.analysis
+            if (githubData.success && githubData.analysis) {
+              analysis.githubAnalysis = githubData.analysis
+              console.log('GitHub analysis completed successfully for:', githubUsername)
+            } else {
+              console.log('GitHub analysis response invalid:', githubData)
+            }
+          } else {
+            console.log('GitHub analysis failed with status:', githubResponse.status)
+            const errorText = await githubResponse.text()
+            console.log('GitHub error response:', errorText)
           }
+        } else {
+          console.log('Invalid GitHub username detected, skipping analysis:', githubUsername)
         }
       } catch (error) {
         console.log('GitHub analysis failed:', error)
         // Continue without GitHub analysis
+      }
+    } else {
+      console.log('No GitHub URL found in candidate links')
+    }
+
+    // Analyze LinkedIn profile if found
+    if (candidateLinks.linkedin) {
+      try {
+        console.log('Analyzing LinkedIn profile:', candidateLinks.linkedin)
+        const linkedinResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/linkedin-analyzer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            linkedInUrl: candidateLinks.linkedin,
+            resumeText: resumeText
+          })
+        })
+
+        if (linkedinResponse.ok) {
+          const linkedinData = await linkedinResponse.json()
+          analysis.linkedinAnalysis = linkedinData.analysis
+          console.log('LinkedIn analysis completed')
+        } else {
+          console.log('LinkedIn analysis failed with status:', linkedinResponse.status)
+        }
+      } catch (error) {
+        console.log('LinkedIn analysis failed:', error)
+        // Continue without LinkedIn analysis
       }
     }
 
