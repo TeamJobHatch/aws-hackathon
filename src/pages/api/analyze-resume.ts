@@ -429,40 +429,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (candidateLinks.github) {
       try {
         const githubUsername = candidateLinks.github.split('/').pop()
-        console.log('Extracted GitHub username from URL:', githubUsername, 'from URL:', candidateLinks.github)
-        
-        // Validate GitHub username
-        if (githubUsername && 
-            githubUsername.length > 0 && 
-            githubUsername.length < 40 && 
-            !/\.(edu|com|org|net|gov)$/.test(githubUsername) &&
-            !githubUsername.includes('@') &&
-            !githubUsername.includes('.') &&
-            /^[a-zA-Z0-9-_]+$/.test(githubUsername)) {
+                  console.log('Extracted GitHub username from URL:', githubUsername, 'from URL:', candidateLinks.github)
           
-          console.log('Valid GitHub username detected, analyzing:', githubUsername)
-          const githubResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/github-analyzer`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              username: githubUsername,
-              jobSkills: jobDescription.skills
+          // Validate GitHub username
+          if (githubUsername && 
+              githubUsername.length > 0 && 
+              githubUsername.length < 40 && 
+              !/\.(edu|com|org|net|gov)$/.test(githubUsername) &&
+              !githubUsername.includes('@') &&
+              !githubUsername.includes('.') &&
+              /^[a-zA-Z0-9-_]+$/.test(githubUsername)) {
+            
+            console.log('💻 Starting deep GitHub analysis for:', githubUsername)
+            const githubResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/github-analyzer`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                username: githubUsername,
+                jobSkills: jobDescription.skills,
+                resumeText: resumeText
+              })
             })
-          })
 
-          if (githubResponse.ok) {
-            const githubData = await githubResponse.json()
-            if (githubData.success && githubData.analysis) {
-              analysis.githubAnalysis = githubData.analysis
-              console.log('GitHub analysis completed successfully for:', githubUsername)
+                      if (githubResponse.ok) {
+              const githubData = await githubResponse.json()
+              if (githubData.success && githubData.analysis) {
+                analysis.githubAnalysis = githubData.analysis
+                console.log('✅ GitHub deep analysis completed for:', githubUsername)
+                console.log('📊 GitHub metrics:', {
+                  technical: githubData.analysis.technical_score,
+                  activity: githubData.analysis.activity_score,
+                  projects: githubData.analysis.repository_analysis?.length || 0,
+                  resumeMatches: githubData.analysis.overall_metrics?.resume_matched_repos || 0,
+                  redFlags: githubData.analysis.red_flags?.length || 0
+                })
+              } else {
+                console.log('❌ GitHub analysis response invalid:', githubData)
+              }
             } else {
-              console.log('GitHub analysis response invalid:', githubData)
+              console.log('❌ GitHub analysis failed with status:', githubResponse.status)
+              const errorText = await githubResponse.text()
+              console.log('GitHub error response:', errorText)
             }
-          } else {
-            console.log('GitHub analysis failed with status:', githubResponse.status)
-            const errorText = await githubResponse.text()
-            console.log('GitHub error response:', errorText)
-          }
         } else {
           console.log('Invalid GitHub username detected, skipping analysis:', githubUsername)
         }
