@@ -155,7 +155,7 @@ export default function ConfirmJobDetails({
       <div className="flex flex-col sm:flex-row gap-4 mt-8">
         <button
           onClick={goToPreviousStep}
-          className="btn-jobhatch-secondary flex-1"
+          className="btn-jobhatch-secondary flex-1 flex items-center justify-center"
         >
           <ArrowLeft className="mr-2 h-5 w-5" />
           Edit Job Details
@@ -163,7 +163,7 @@ export default function ConfirmJobDetails({
         
         <button
           onClick={goToNextStep}
-          className="btn-jobhatch-primary flex-1"
+          className="btn-jobhatch-primary flex-1 flex items-center justify-center"
         >
           Proceed to Upload Resumes
           <ArrowRight className="ml-2 h-5 w-5" />

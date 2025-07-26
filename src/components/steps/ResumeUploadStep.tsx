@@ -275,7 +275,7 @@ export default function ResumeUploadStep({
       <div className="flex flex-col sm:flex-row gap-4">
         <button
           onClick={goToPreviousStep}
-          className="btn-jobhatch-secondary flex-1"
+          className="btn-jobhatch-secondary flex-1 flex items-center justify-center"
         >
           <ArrowLeft className="mr-2 h-5 w-5" />
           Back to Job Details
@@ -284,7 +284,7 @@ export default function ResumeUploadStep({
         <button
           onClick={goToNextStep}
           disabled={!canProceed || isUploading}
-          className={`flex-1 ${
+          className={`flex-1 flex items-center justify-center ${
             canProceed && !isUploading 
               ? 'btn-jobhatch-primary' 
               : 'btn-jobhatch-secondary opacity-50 cursor-not-allowed'

@@ -202,17 +202,30 @@ export default function HRWizard() {
               return (
                 <motion.div
                   key={step.id}
-                  className="flex items-center"
+                  className="flex flex-col items-center relative"
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: index * 0.1, duration: 0.3 }}
                 >
-                  {/* Step Circle */}
-                  <div className="flex flex-col items-center relative group">
+                  {/* Step Circle Container */}
+                  <div className="flex items-center">
+                    {/* Connection Line (Before) */}
+                    {index > 0 && (
+                      <motion.div
+                        className={`w-4 sm:w-8 h-0.5 transition-all duration-500 ${
+                          steps[index - 1] && getCurrentStepIndex() > index - 1 ? 'bg-green-500' : 'bg-gray-300'
+                        }`}
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: 1 }}
+                        transition={{ delay: index * 0.1 + 0.3, duration: 0.5 }}
+                      />
+                    )}
+
+                    {/* Step Circle */}
                     <motion.button
                       onClick={() => canNavigate ? goToStep(step.id) : null}
                       disabled={!canNavigate}
-                      className={`relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 font-bold text-sm transition-all duration-300 ${
+                      className={`relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 font-bold text-sm transition-all duration-300 mx-1 ${
                         isCompleted 
                           ? 'bg-green-500 border-green-500 text-white shadow-lg' 
                           : isActive 
@@ -264,40 +277,40 @@ export default function HRWizard() {
                       )}
                     </motion.button>
 
-                    {/* Step Title */}
-                    <motion.div
-                      className={`text-xs mt-2 hidden sm:block font-medium transition-colors duration-200 ${
-                        isActive ? 'text-orange-600' : 
-                        isCompleted ? 'text-green-600' : 
-                        canNavigate ? 'text-gray-600' : 'text-gray-400'
-                      }`}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 + 0.2 }}
-                    >
-                      {step.title}
-                    </motion.div>
-
-                    {/* Mobile Step Title Tooltip */}
-                    <div className="sm:hidden absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                      <div className="bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                        {step.title}
-                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 -mt-1" />
-                      </div>
-                    </div>
+                    {/* Connection Line (After) */}
+                    {index < steps.length - 1 && (
+                      <motion.div
+                        className={`w-4 sm:w-8 h-0.5 transition-all duration-500 ${
+                          isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                        }`}
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: 1 }}
+                        transition={{ delay: index * 0.1 + 0.3, duration: 0.5 }}
+                      />
+                    )}
                   </div>
 
-                  {/* Connection Line */}
-                  {index < steps.length - 1 && (
-                    <motion.div
-                      className={`w-4 sm:w-8 h-0.5 mx-1 sm:mx-2 transition-all duration-500 ${
-                        isCompleted ? 'bg-green-500' : 'bg-gray-300'
-                      }`}
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: 1 }}
-                      transition={{ delay: index * 0.1 + 0.3, duration: 0.5 }}
-                    />
-                  )}
+                  {/* Step Title - Perfectly Centered */}
+                  <motion.div
+                    className={`text-xs mt-3 hidden sm:block font-medium transition-colors duration-200 text-center whitespace-nowrap ${
+                      isActive ? 'text-orange-600' : 
+                      isCompleted ? 'text-green-600' : 
+                      canNavigate ? 'text-gray-600' : 'text-gray-400'
+                    }`}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 + 0.2 }}
+                  >
+                    {step.title}
+                  </motion.div>
+
+                  {/* Mobile Step Title Tooltip */}
+                  <div className="sm:hidden absolute -top-12 left-1/2 transform -translate-x-1/2 opacity-0 hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                    <div className="bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                      {step.title}
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 -mt-1" />
+                    </div>
+                  </div>
                 </motion.div>
               )
             })}

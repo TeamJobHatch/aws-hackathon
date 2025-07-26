@@ -287,7 +287,7 @@ export default function JobDescriptionStep({
             <button
               onClick={handleLinkSubmit}
               disabled={linkMutation.isLoading || !jobLink.trim()}
-              className="btn-jobhatch-primary w-full"
+              className="btn-jobhatch-primary w-full flex items-center justify-center"
             >
               {linkMutation.isLoading ? (
                 <>
@@ -365,7 +365,7 @@ export default function JobDescriptionStep({
 
             <button
               onClick={handleManualSubmit}
-              className="btn-jobhatch-primary w-full"
+              className="btn-jobhatch-primary w-full flex items-center justify-center"
             >
               Continue with Job Description
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -378,7 +378,7 @@ export default function JobDescriptionStep({
       <div className="flex justify-between mt-8">
         <button
           onClick={goToPreviousStep}
-          className="btn-jobhatch-secondary"
+          className="btn-jobhatch-secondary flex items-center justify-center"
         >
           <ArrowLeft className="mr-2 h-5 w-5" />
           Back
