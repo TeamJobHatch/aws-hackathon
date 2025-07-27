@@ -197,20 +197,113 @@ export interface ExperienceMatch {
   score: number
 }
 
+// Enhanced GitHub Analysis Types (Gemini-powered)
+export interface GitHubDemoLink {
+  type: 'demo' | 'video' | 'documentation' | 'live_site' | 'github_pages'
+  url: string
+  description: string
+  working: boolean
+  hiring_impact: 'positive' | 'neutral' | 'negative'
+}
+
+export interface GitHubRedFlag {
+  type: 'critical' | 'moderate' | 'minor'
+  description: string
+  evidence: string
+  hiring_impact: 'negative' | 'caution'
+}
+
+export interface GitHubPositiveIndicator {
+  type: 'technical' | 'professional' | 'collaboration'
+  description: string
+  evidence: string
+  hiring_impact: 'positive' | 'strong_positive'
+}
+
+export interface GitHubRecommendation {
+  action: string
+  priority: 'high' | 'medium' | 'low'
+  hiring_impact: 'positive' | 'negative' | 'neutral'
+}
+
+export interface GitHubProjectAnalysis {
+  name: string
+  html_url: string
+  resume_mentioned: boolean
+  resume_evidence?: string
+  completeness_score: number
+  demo_links: GitHubDemoLink[]
+  code_quality: {
+    naming_score: number
+    comments_score: number
+    structure_score: number
+    ai_usage_percentage: number
+    overall_score: number
+    professional_readme: boolean
+    has_tests: boolean
+    follows_conventions: boolean
+    gemini_confidence: number
+  }
+  red_flags: GitHubRedFlag[]
+  positive_indicators: GitHubPositiveIndicator[]
+  recommendations: GitHubRecommendation[]
+  project_highlights: string[]
+  technologies_detected: string[]
+  project_complexity: 'beginner' | 'intermediate' | 'advanced' | 'expert'
+  estimated_time_investment: string
+  collaboration_evidence: {
+    is_group_project: boolean
+    evidence: string[]
+    individual_contribution_clarity: number
+    hiring_impact: 'positive' | 'negative' | 'neutral'
+  }
+}
+
 export interface GitHubAnalysis {
   username: string
-  profile: GitHubProfile
-  relevantRepositories: Repository[]
-  technicalScore: number
-  activityScore: number
-  codeQualityIndicators: string[]
-  skillsEvidence?: string[]
-  projectHighlights?: string[]
-  recommendations?: string[]
-  languageBreakdown?: Record<string, number>
-  projectCategories?: string[]
-  collaborationScore?: number
-  portfolioQuality?: number
+  profile: {
+    login: string
+    name: string
+    bio?: string
+    avatar_url: string
+    html_url: string
+    public_repos: number
+    followers: number
+    following: number
+    created_at: string
+    updated_at: string
+    company?: string
+    location?: string
+  }
+  repository_analysis: GitHubProjectAnalysis[]
+  overall_metrics: {
+    total_repos: number
+    active_repos: number
+    resume_matched_repos: number
+    average_code_quality: number
+    commit_consistency: number
+    collaboration_score: number
+    original_projects: number
+    forked_projects: number
+    project_diversity_score: number
+  }
+  red_flags: string[]
+  positive_indicators: string[]
+  technical_score: number
+  activity_score: number
+  authenticity_score: number
+  recommendations: string[]
+  chain_of_thought: string[]
+  hiring_verdict: {
+    recommendation: 'strong_hire' | 'hire' | 'maybe' | 'no_hire'
+    confidence: number
+    reasoning: string[]
+  }
+  gemini_insights: {
+    ai_detection_confidence: number
+    overall_assessment: string
+    hiring_recommendation: string
+  }
 }
 
 export interface ApplicantComparison {

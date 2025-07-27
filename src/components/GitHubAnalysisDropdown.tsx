@@ -2,77 +2,95 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  ChevronDown, 
-  ChevronUp, 
-  Github, 
-  ExternalLink, 
-  Star, 
-  GitFork, 
-  Calendar, 
-  Code, 
-  Users, 
-  Activity,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  Eye,
-  FileText,
-  Link,
-  Zap,
-  Award,
-  MessageSquare
-} from 'lucide-react'
+import { ChevronDown, ChevronUp, Github, ExternalLink, Star, GitFork, Calendar, Code, Users, Activity, CheckCircle, AlertTriangle, XCircle, Zap, Brain, Link as LinkIcon } from 'lucide-react'
 
-interface ProjectAnalysis {
-  name: string
-  html_url: string
-  resume_mentioned: boolean
-  resume_evidence?: string
-  completeness_score: number
-  demo_links: Array<{
-    type: 'demo' | 'video' | 'documentation' | 'live_site'
-    url: string
-    description: string
-  }>
-  code_quality: {
-    naming_score: number
-    comments_score: number
-    structure_score: number
-    ai_usage_percentage: number
-    overall_score: number
-  }
-  red_flags: string[]
-  recommendations: string[]
-  project_highlights: string[]
+interface DemoLink {
+  type: 'demo' | 'video' | 'documentation' | 'live_site' | 'github_pages'
+  url: string
+  description: string
+  working: boolean
+  hiring_impact: 'positive' | 'neutral' | 'negative'
 }
 
-interface GitHubAnalysis {
-  username: string
-  profile: any
-  repository_analysis: ProjectAnalysis[]
-  overall_metrics: {
-    total_repos: number
-    resume_matched_repos: number
-    average_code_quality: number
-    commit_consistency: number
-    collaboration_score: number
-  }
-  red_flags: string[]
-  technical_score: number
-  activity_score: number
-  recommendations: string[]
-  chain_of_thought: string[]
+interface RedFlag {
+  type: 'critical' | 'moderate' | 'minor'
+  description: string
+  evidence: string
+  hiring_impact: 'negative' | 'caution'
+}
+
+interface PositiveIndicator {
+  type: 'technical' | 'professional' | 'collaboration'
+  description: string
+  evidence: string
+  hiring_impact: 'positive' | 'strong_positive'
+}
+
+interface Recommendation {
+  action: string
+  priority: 'high' | 'medium' | 'low'
+  hiring_impact: 'positive' | 'negative' | 'neutral'
 }
 
 interface GitHubAnalysisDropdownProps {
-  analysis: GitHubAnalysis
+  analysis: {
+    profile?: any
+    technical_score?: number
+    activity_score?: number
+    authenticity_score?: number
+    overall_metrics?: any
+    repository_analysis?: Array<{
+      name: string
+      html_url: string
+      resume_mentioned: boolean
+      resume_evidence?: string
+      completeness_score: number
+      demo_links: DemoLink[]
+      code_quality: {
+        naming_score: number
+        comments_score: number
+        structure_score: number
+        ai_usage_percentage: number
+        overall_score: number
+        professional_readme: boolean
+        has_tests: boolean
+        follows_conventions: boolean
+        gemini_confidence: number
+      }
+      red_flags: RedFlag[]
+      positive_indicators: PositiveIndicator[]
+      recommendations: Recommendation[]
+      project_highlights: string[]
+      technologies_detected: string[]
+      project_complexity: 'beginner' | 'intermediate' | 'advanced' | 'expert'
+      estimated_time_investment: string
+      collaboration_evidence: {
+        is_group_project: boolean
+        evidence: string[]
+        individual_contribution_clarity: number
+        hiring_impact: 'positive' | 'negative' | 'neutral'
+      }
+    }>
+    red_flags?: string[]
+    positive_indicators?: string[]
+    recommendations?: string[]
+    hiring_verdict?: {
+      recommendation: 'strong_hire' | 'hire' | 'maybe' | 'no_hire'
+      confidence: number
+      reasoning: string[]
+    }
+    gemini_insights?: {
+      ai_detection_confidence: number
+      overall_assessment: string
+      hiring_recommendation: string
+    }
+  }
   candidateName: string
 }
 
 export default function GitHubAnalysisDropdown({ analysis, candidateName }: GitHubAnalysisDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'quality' | 'redflags'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'insights' | 'verdict'>('overview')
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600 bg-green-50'
@@ -80,42 +98,100 @@ export default function GitHubAnalysisDropdown({ analysis, candidateName }: GitH
     return 'text-red-600 bg-red-50'
   }
 
+  const getComplexityColor = (complexity: string) => {
+    switch (complexity) {
+      case 'expert': return 'bg-purple-100 text-purple-700'
+      case 'advanced': return 'bg-blue-100 text-blue-700'
+      case 'intermediate': return 'bg-green-100 text-green-700'
+      default: return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+  const getHiringImpactIcon = (impact: string) => {
+    switch (impact) {
+      case 'strong_positive':
+      case 'positive':
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'negative':
+        return <XCircle className="h-4 w-4 text-red-500" />
+      case 'caution':
+        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
+      default:
+        return <AlertTriangle className="h-4 w-4 text-gray-400" />
+    }
+  }
+
+  const getHiringImpactColor = (impact: string) => {
+    switch (impact) {
+      case 'strong_positive':
+        return 'border-l-green-600 bg-green-50'
+      case 'positive':
+        return 'border-l-green-500 bg-green-50'
+      case 'negative':
+        return 'border-l-red-500 bg-red-50'
+      case 'caution':
+        return 'border-l-yellow-500 bg-yellow-50'
+      default:
+        return 'border-l-gray-400 bg-gray-50'
+    }
+  }
+
+  const getVerdictColor = (verdict: string) => {
+    switch (verdict) {
+      case 'strong_hire':
+        return 'text-green-700 bg-green-100 border-green-200'
+      case 'hire':
+        return 'text-green-600 bg-green-50 border-green-200'
+      case 'maybe':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200'
+      case 'no_hire':
+        return 'text-red-600 bg-red-50 border-red-200'
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200'
+    }
+  }
+
+  const getVerdictIcon = (verdict: string) => {
+    switch (verdict) {
+      case 'strong_hire': return '🚀'
+      case 'hire': return '✅'
+      case 'maybe': return '⚠️'
+      case 'no_hire': return '❌'
+      default: return '❓'
+    }
+  }
+
   const overallHiringImpact = () => {
     const techScore = analysis.technical_score || 0
     const activityScore = analysis.activity_score || 0
-    const redFlagCount = analysis.red_flags.length
-    const avgScore = (techScore + activityScore) / 2
+    const authenticityScore = analysis.authenticity_score || 0
+    const avgScore = (techScore + activityScore + authenticityScore) / 3
 
-    if (avgScore >= 85 && redFlagCount === 0) {
-      return { verdict: 'Exceptional Developer', color: 'text-green-700 bg-green-100', icon: '🚀' }
-    } else if (avgScore >= 75 && redFlagCount <= 1) {
-      return { verdict: 'Strong Technical Profile', color: 'text-green-600 bg-green-50', icon: '👍' }
-    } else if (avgScore >= 60 && redFlagCount <= 2) {
-      return { verdict: 'Good Potential', color: 'text-yellow-600 bg-yellow-50', icon: '⚠️' }
-    } else if (redFlagCount > 3) {
-      return { verdict: 'High Risk', color: 'text-red-600 bg-red-50', icon: '🚨' }
+    if (analysis.hiring_verdict) {
+      const verdict = analysis.hiring_verdict.recommendation
+      const icon = getVerdictIcon(verdict)
+      const color = getVerdictColor(verdict)
+      return { 
+        verdict: verdict.replace('_', ' ').toUpperCase(), 
+        color, 
+        icon,
+        confidence: analysis.hiring_verdict.confidence
+      }
+    }
+
+    // Fallback logic
+    if (avgScore >= 85) {
+      return { verdict: 'STRONG HIRE', color: 'text-green-700 bg-green-100', icon: '🚀', confidence: 90 }
+    } else if (avgScore >= 70) {
+      return { verdict: 'HIRE', color: 'text-green-600 bg-green-50', icon: '✅', confidence: 75 }
+    } else if (avgScore >= 50) {
+      return { verdict: 'MAYBE', color: 'text-yellow-600 bg-yellow-50', icon: '⚠️', confidence: 60 }
     } else {
-      return { verdict: 'Needs Review', color: 'text-orange-600 bg-orange-50', icon: '📋' }
+      return { verdict: 'NO HIRE', color: 'text-red-600 bg-red-50', icon: '❌', confidence: 80 }
     }
   }
 
   const hiringImpact = overallHiringImpact()
-
-  const getLinkIcon = (type: string) => {
-    switch (type) {
-      case 'demo': return <Eye className="h-4 w-4" />
-      case 'video': return <Activity className="h-4 w-4" />
-      case 'documentation': return <FileText className="h-4 w-4" />
-      case 'live_site': return <ExternalLink className="h-4 w-4" />
-      default: return <Link className="h-4 w-4" />
-    }
-  }
-
-  const getResumeMatchIcon = (mentioned: boolean) => {
-    return mentioned ? 
-      <CheckCircle className="h-4 w-4 text-green-500" /> : 
-      <XCircle className="h-4 w-4 text-red-500" />
-  }
 
   if (!analysis) {
     return (
@@ -140,19 +216,17 @@ export default function GitHubAnalysisDropdown({ analysis, candidateName }: GitH
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
             <Github className="h-5 w-5 text-purple-600" />
-            <span className="font-semibold text-gray-900">GitHub Deep Analysis</span>
+            <span className="font-semibold text-gray-900">GitHub Analysis</span>
+            {analysis.gemini_insights && (
+              <Brain className="h-4 w-4 text-blue-500" />
+            )}
           </div>
           <div className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(analysis.technical_score || 0)}`}>
             {analysis.technical_score || 0}% Technical
           </div>
-          <div className={`px-3 py-1 rounded-full text-sm font-medium ${hiringImpact.color}`}>
+          <div className={`px-3 py-1 rounded-full text-sm font-medium border ${hiringImpact.color}`}>
             {hiringImpact.icon} {hiringImpact.verdict}
           </div>
-          {analysis.red_flags.length > 0 && (
-            <div className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">
-              {analysis.red_flags.length} flags
-            </div>
-          )}
         </div>
         
         <div className="flex items-center space-x-2">
@@ -191,8 +265,8 @@ export default function GitHubAnalysisDropdown({ analysis, candidateName }: GitH
                 {[
                   { id: 'overview', label: 'Overview', icon: Activity },
                   { id: 'projects', label: 'Projects', icon: Code },
-                  { id: 'quality', label: 'Code Quality', icon: Award },
-                  { id: 'redflags', label: 'Red Flags', icon: AlertTriangle }
+                  { id: 'insights', label: 'AI Insights', icon: Brain },
+                  { id: 'verdict', label: 'Verdict', icon: CheckCircle }
                 ].map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
@@ -205,16 +279,6 @@ export default function GitHubAnalysisDropdown({ analysis, candidateName }: GitH
                   >
                     <Icon className="h-4 w-4" />
                     <span>{label}</span>
-                    {id === 'redflags' && analysis.red_flags.length > 0 && (
-                      <span className="ml-1 px-2 py-0.5 text-xs bg-red-100 text-red-600 rounded-full">
-                        {analysis.red_flags.length}
-                      </span>
-                    )}
-                    {id === 'projects' && (
-                      <span className="ml-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
-                        {analysis.repository_analysis.length}
-                      </span>
-                    )}
                   </button>
                 ))}
               </div>
@@ -230,77 +294,96 @@ export default function GitHubAnalysisDropdown({ analysis, candidateName }: GitH
                   className="space-y-6"
                 >
                   {/* Score Cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <div className={`text-2xl font-bold ${getScoreColor(analysis.technical_score).split(' ')[0]}`}>
-                        {analysis.technical_score}%
+                      <div className={`text-2xl font-bold ${getScoreColor(analysis.technical_score || 0).split(' ')[0]}`}>
+                        {analysis.technical_score || 0}%
                       </div>
                       <div className="text-sm text-gray-600">Technical</div>
                     </div>
                     <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <div className={`text-2xl font-bold ${getScoreColor(analysis.activity_score).split(' ')[0]}`}>
-                        {analysis.activity_score}%
+                      <div className={`text-2xl font-bold ${getScoreColor(analysis.activity_score || 0).split(' ')[0]}`}>
+                        {analysis.activity_score || 0}%
                       </div>
                       <div className="text-sm text-gray-600">Activity</div>
                     </div>
                     <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {analysis.overall_metrics.resume_matched_repos}
+                      <div className={`text-2xl font-bold ${getScoreColor(analysis.authenticity_score || 0).split(' ')[0]}`}>
+                        {analysis.authenticity_score || 0}%
                       </div>
-                      <div className="text-sm text-gray-600">Resume Match</div>
-                    </div>
-                    <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <div className={`text-2xl font-bold ${getScoreColor(analysis.overall_metrics.average_code_quality).split(' ')[0]}`}>
-                        {analysis.overall_metrics.average_code_quality}%
-                      </div>
-                      <div className="text-sm text-gray-600">Code Quality</div>
+                      <div className="text-sm text-gray-600">Authenticity</div>
                     </div>
                   </div>
 
                   {/* Profile Stats */}
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                      <Users className="h-4 w-4 mr-2" />
-                      GitHub Profile Summary
-                    </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div className="flex items-center space-x-2">
-                        <Code className="h-4 w-4 text-purple-500" />
-                        <span>{analysis.overall_metrics.total_repos} Total Repos</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="h-4 w-4 text-blue-500" />
-                        <span>{analysis.profile.followers} Followers</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <GitFork className="h-4 w-4 text-green-500" />
-                        <span>{analysis.profile.following} Following</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-orange-500" />
-                        <span>Since {new Date(analysis.profile.created_at).getFullYear()}</span>
+                  {analysis.profile && (
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                        <Users className="h-4 w-4 mr-2" />
+                        Profile Overview
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div className="flex items-center space-x-2">
+                          <Star className="h-4 w-4 text-yellow-500" />
+                          <span>{analysis.profile.public_repos || 0} Repos</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Users className="h-4 w-4 text-blue-500" />
+                          <span>{analysis.profile.followers || 0} Followers</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <GitFork className="h-4 w-4 text-green-500" />
+                          <span>{analysis.profile.following || 0} Following</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Calendar className="h-4 w-4 text-purple-500" />
+                          <span>Since {new Date(analysis.profile.created_at).getFullYear()}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Hiring Recommendation */}
-                  <div className={`p-4 rounded-lg border-l-4 ${
-                    hiringImpact.color.includes('green') ? 'border-l-green-500 bg-green-50' : 
-                    hiringImpact.color.includes('yellow') ? 'border-l-yellow-500 bg-yellow-50' : 
-                    hiringImpact.color.includes('red') ? 'border-l-red-500 bg-red-50' :
-                    'border-l-purple-500 bg-purple-50'
-                  }`}>
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className="text-lg">{hiringImpact.icon}</span>
-                      <h4 className="font-semibold">Technical Assessment: {hiringImpact.verdict}</h4>
+                  {/* Quick Summary */}
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {/* Positive Indicators */}
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                        <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                        Positive Indicators
+                      </h4>
+                      {analysis.positive_indicators && analysis.positive_indicators.length > 0 ? (
+                        <ul className="space-y-1">
+                          {analysis.positive_indicators.slice(0, 3).map((indicator, index) => (
+                            <li key={index} className="text-sm text-gray-600 flex items-start">
+                              <span className="text-green-500 mr-2">•</span>
+                              {indicator}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-gray-500">No major strengths identified</p>
+                      )}
                     </div>
-                    {analysis.recommendations.length > 0 && (
-                      <ul className="space-y-1">
-                        {analysis.recommendations.map((rec, index) => (
-                          <li key={index} className="text-sm">{rec}</li>
-                        ))}
-                      </ul>
-                    )}
+
+                    {/* Red Flags */}
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                        <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />
+                        Red Flags
+                      </h4>
+                      {analysis.red_flags && analysis.red_flags.length > 0 ? (
+                        <ul className="space-y-1">
+                          {analysis.red_flags.slice(0, 3).map((flag, index) => (
+                            <li key={index} className="text-sm text-gray-600 flex items-start">
+                              <span className="text-red-500 mr-2">•</span>
+                              {flag}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-gray-500">No major concerns identified</p>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -312,273 +395,257 @@ export default function GitHubAnalysisDropdown({ analysis, candidateName }: GitH
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
                 >
-                  {analysis.repository_analysis.length > 0 ? (
+                  {analysis.repository_analysis && analysis.repository_analysis.length > 0 ? (
                     analysis.repository_analysis.map((project, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-4">
                         {/* Project Header */}
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-start space-x-3">
-                            {getResumeMatchIcon(project.resume_mentioned)}
-                            <div>
-                              <h5 className="font-semibold text-gray-900 flex items-center space-x-2">
-                                <span>{project.name}</span>
-                                <a
-                                  href={project.html_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-purple-600 hover:text-purple-800"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </a>
-                              </h5>
-                              {project.resume_mentioned && project.resume_evidence && (
-                                <p className="text-sm text-green-700 mt-1">
-                                  📝 Resume: {project.resume_evidence}
-                                </p>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <h5 className="font-semibold text-gray-900">{project.name}</h5>
+                              <a
+                                href={project.html_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-purple-600 hover:text-purple-800"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </div>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <span className={`px-2 py-1 text-xs rounded ${getComplexityColor(project.project_complexity)}`}>
+                                {project.project_complexity}
+                              </span>
+                              {project.resume_mentioned && (
+                                <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-700">
+                                  ✓ Resume Match
+                                </span>
                               )}
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className={`px-2 py-1 rounded text-sm font-medium ${getScoreColor(project.completeness_score)}`}>
-                              {project.completeness_score}% Complete
+                            <div className={`text-lg font-semibold ${getScoreColor(project.code_quality.overall_score).split(' ')[0]}`}>
+                              {project.code_quality.overall_score}%
                             </div>
+                            <div className="text-xs text-gray-500">Quality Score</div>
                           </div>
                         </div>
 
                         {/* Demo Links */}
                         {project.demo_links.length > 0 && (
-                          <div className="mb-3">
-                            <h6 className="text-sm font-medium text-gray-700 mb-2">Available Links:</h6>
-                            <div className="flex flex-wrap gap-2">
-                              {project.demo_links.map((link, linkIndex) => (
-                                <a
-                                  key={linkIndex}
-                                  href={link.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center space-x-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm"
-                                >
-                                  {getLinkIcon(link.type)}
-                                  <span>{link.description}</span>
-                                </a>
+                          <div>
+                            <h6 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                              <LinkIcon className="h-4 w-4 mr-1" />
+                              Live Demos
+                            </h6>
+                            <div className="space-y-1">
+                              {project.demo_links.map((link, idx) => (
+                                <div key={idx} className={`p-2 border-l-4 rounded-r ${getHiringImpactColor(link.hiring_impact)}`}>
+                                  <div className="flex items-center justify-between">
+                                    <a
+                                      href={link.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                    >
+                                      {link.description}
+                                    </a>
+                                    <div className="flex items-center space-x-2">
+                                      {getHiringImpactIcon(link.hiring_impact)}
+                                      <span className="text-xs text-gray-500 capitalize">{link.type}</span>
+                                    </div>
+                                  </div>
+                                </div>
                               ))}
                             </div>
                           </div>
                         )}
 
                         {/* Code Quality Breakdown */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                          <div className="text-center p-2 bg-gray-50 rounded">
-                            <div className={`text-sm font-bold ${getScoreColor(project.code_quality.naming_score).split(' ')[0]}`}>
-                              {project.code_quality.naming_score}%
-                            </div>
-                            <div className="text-xs text-gray-600">Naming</div>
-                          </div>
-                          <div className="text-center p-2 bg-gray-50 rounded">
-                            <div className={`text-sm font-bold ${getScoreColor(project.code_quality.comments_score).split(' ')[0]}`}>
-                              {project.code_quality.comments_score}%
-                            </div>
-                            <div className="text-xs text-gray-600">Comments</div>
-                          </div>
-                          <div className="text-center p-2 bg-gray-50 rounded">
-                            <div className={`text-sm font-bold ${getScoreColor(project.code_quality.structure_score).split(' ')[0]}`}>
-                              {project.code_quality.structure_score}%
-                            </div>
-                            <div className="text-xs text-gray-600">Structure</div>
-                          </div>
-                          <div className="text-center p-2 bg-gray-50 rounded">
-                            <div className="text-sm font-bold text-orange-600">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="font-medium text-gray-600">AI Usage:</span>
+                            <span className={`ml-2 ${project.code_quality.ai_usage_percentage > 50 ? 'text-orange-600' : 'text-green-600'}`}>
                               {project.code_quality.ai_usage_percentage}%
-                            </div>
-                            <div className="text-xs text-gray-600">AI Usage</div>
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-600">Gemini Confidence:</span>
+                            <span className="ml-2 text-blue-600">{project.code_quality.gemini_confidence}%</span>
                           </div>
                         </div>
 
-                        {/* Project Highlights */}
-                        {project.project_highlights.length > 0 && (
-                          <div className="mb-3">
-                            <h6 className="text-sm font-medium text-gray-700 mb-1">Highlights:</h6>
-                            <ul className="text-sm text-gray-600 space-y-1">
-                              {project.project_highlights.map((highlight, idx) => (
-                                <li key={idx} className="flex items-start">
-                                  <span className="text-green-500 mr-2">•</span>
-                                  {highlight}
-                                </li>
-                              ))}
-                            </ul>
+                        {/* Red Flags & Positive Indicators */}
+                        {(project.red_flags.length > 0 || project.positive_indicators.length > 0) && (
+                          <div className="grid md:grid-cols-2 gap-4">
+                            {project.red_flags.length > 0 && (
+                              <div>
+                                <h6 className="text-sm font-medium text-red-700 mb-2">Issues</h6>
+                                <div className="space-y-1">
+                                  {project.red_flags.map((flag, idx) => (
+                                    <div key={idx} className={`p-2 border-l-4 rounded-r ${getHiringImpactColor(flag.hiring_impact)}`}>
+                                      <div className="flex items-start space-x-2">
+                                        {getHiringImpactIcon(flag.hiring_impact)}
+                                        <div>
+                                          <div className="text-sm font-medium">{flag.description}</div>
+                                          <div className="text-xs text-gray-600">{flag.evidence}</div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {project.positive_indicators.length > 0 && (
+                              <div>
+                                <h6 className="text-sm font-medium text-green-700 mb-2">Strengths</h6>
+                                <div className="space-y-1">
+                                  {project.positive_indicators.map((indicator, idx) => (
+                                    <div key={idx} className={`p-2 border-l-4 rounded-r ${getHiringImpactColor(indicator.hiring_impact)}`}>
+                                      <div className="flex items-start space-x-2">
+                                        {getHiringImpactIcon(indicator.hiring_impact)}
+                                        <div>
+                                          <div className="text-sm font-medium">{indicator.description}</div>
+                                          <div className="text-xs text-gray-600">{indicator.evidence}</div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 
-                        {/* Project Red Flags */}
-                        {project.red_flags.length > 0 && (
+                        {/* Technologies */}
+                        {project.technologies_detected.length > 0 && (
                           <div>
-                            <h6 className="text-sm font-medium text-red-700 mb-1">⚠️ Concerns:</h6>
-                            <ul className="text-sm text-red-600 space-y-1">
-                              {project.red_flags.map((flag, idx) => (
-                                <li key={idx} className="flex items-start">
-                                  <span className="text-red-500 mr-2">•</span>
-                                  {flag}
-                                </li>
+                            <h6 className="text-sm font-medium text-gray-700 mb-2">Technologies</h6>
+                            <div className="flex flex-wrap gap-1">
+                              {project.technologies_detected.map((tech, idx) => (
+                                <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">
+                                  {tech}
+                                </span>
                               ))}
-                            </ul>
+                            </div>
                           </div>
                         )}
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-8">
-                      <Code className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                      <h4 className="font-semibold text-gray-900 mb-2">No Projects Analyzed</h4>
-                      <p className="text-gray-600">No suitable repositories found for detailed analysis.</p>
+                    <div className="text-center py-8 text-gray-500">
+                      No project analysis available
                     </div>
                   )}
                 </motion.div>
               )}
 
-              {/* Code Quality Tab */}
-              {activeTab === 'quality' && (
+              {/* AI Insights Tab */}
+              {activeTab === 'insights' && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-6"
                 >
-                  {/* Overall Quality Metrics */}
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                      <Award className="h-4 w-4 mr-2" />
-                      Code Quality Analysis
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium text-gray-700">Average Naming Quality</span>
-                            <span className="text-sm font-bold text-gray-900">
-                              {Math.round(analysis.repository_analysis.reduce((sum, p) => sum + p.code_quality.naming_score, 0) / analysis.repository_analysis.length) || 0}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
-                              style={{width: `${Math.round(analysis.repository_analysis.reduce((sum, p) => sum + p.code_quality.naming_score, 0) / analysis.repository_analysis.length) || 0}%`}}
-                            ></div>
-                          </div>
-                        </div>
+                  {analysis.gemini_insights ? (
+                    <>
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Brain className="h-5 w-5 text-blue-600" />
+                        <h4 className="font-semibold text-gray-900">Gemini 2.5 Flash Insights</h4>
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+                          {analysis.gemini_insights.ai_detection_confidence}% Confidence
+                        </span>
+                      </div>
 
-                        <div>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium text-gray-700">Documentation Quality</span>
-                            <span className="text-sm font-bold text-gray-900">
-                              {Math.round(analysis.repository_analysis.reduce((sum, p) => sum + p.code_quality.comments_score, 0) / analysis.repository_analysis.length) || 0}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-green-600 h-2 rounded-full" 
-                              style={{width: `${Math.round(analysis.repository_analysis.reduce((sum, p) => sum + p.code_quality.comments_score, 0) / analysis.repository_analysis.length) || 0}%`}}
-                            ></div>
-                          </div>
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div className="p-4 bg-blue-50 rounded-lg">
+                          <h5 className="font-medium text-blue-900 mb-2">Overall Assessment</h5>
+                          <p className="text-blue-800">{analysis.gemini_insights.overall_assessment}</p>
+                        </div>
+                        <div className="p-4 bg-purple-50 rounded-lg">
+                          <h5 className="font-medium text-purple-900 mb-2">Hiring Recommendation</h5>
+                          <p className="text-purple-800">{analysis.gemini_insights.hiring_recommendation}</p>
                         </div>
                       </div>
 
-                      <div className="space-y-4">
+                      {/* AI Usage Analysis */}
+                      {analysis.repository_analysis && (
                         <div>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium text-gray-700">Project Structure</span>
-                            <span className="text-sm font-bold text-gray-900">
-                              {Math.round(analysis.repository_analysis.reduce((sum, p) => sum + p.code_quality.structure_score, 0) / analysis.repository_analysis.length) || 0}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-purple-600 h-2 rounded-full" 
-                              style={{width: `${Math.round(analysis.repository_analysis.reduce((sum, p) => sum + p.code_quality.structure_score, 0) / analysis.repository_analysis.length) || 0}%`}}
-                            ></div>
+                          <h5 className="font-medium text-gray-900 mb-3">AI Usage Analysis</h5>
+                          <div className="space-y-2">
+                            {analysis.repository_analysis.map((project, index) => (
+                              <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                                <span className="font-medium">{project.name}</span>
+                                <div className="flex items-center space-x-3">
+                                  <span className={`px-2 py-1 text-xs rounded ${
+                                    project.code_quality.ai_usage_percentage > 70 ? 'bg-red-100 text-red-700' :
+                                    project.code_quality.ai_usage_percentage > 40 ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-green-100 text-green-700'
+                                  }`}>
+                                    {project.code_quality.ai_usage_percentage}% AI
+                                  </span>
+                                  <span className="text-sm text-gray-600">
+                                    {project.code_quality.gemini_confidence}% confidence
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-
-                        <div>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium text-gray-700">AI Usage Detection</span>
-                            <span className="text-sm font-bold text-orange-600">
-                              {Math.round(analysis.repository_analysis.reduce((sum, p) => sum + p.code_quality.ai_usage_percentage, 0) / analysis.repository_analysis.length) || 0}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-orange-600 h-2 rounded-full" 
-                              style={{width: `${Math.round(analysis.repository_analysis.reduce((sum, p) => sum + p.code_quality.ai_usage_percentage, 0) / analysis.repository_analysis.length) || 0}%`}}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Brain className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                      <p>No AI insights available</p>
                     </div>
-                  </div>
-
-                  {/* AI Usage Analysis */}
-                  <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                    <h5 className="font-semibold text-orange-800 mb-2 flex items-center">
-                      <Zap className="h-4 w-4 mr-2" />
-                      AI Usage Analysis
-                    </h5>
-                    <p className="text-sm text-orange-700 mb-2">
-                      Average AI-generated code detected: {Math.round(analysis.repository_analysis.reduce((sum, p) => sum + p.code_quality.ai_usage_percentage, 0) / analysis.repository_analysis.length) || 0}%
-                    </p>
-                    <div className="text-sm text-orange-600">
-                      {Math.round(analysis.repository_analysis.reduce((sum, p) => sum + p.code_quality.ai_usage_percentage, 0) / analysis.repository_analysis.length) < 30 
-                        ? "✅ Low AI usage indicates original work"
-                        : Math.round(analysis.repository_analysis.reduce((sum, p) => sum + p.code_quality.ai_usage_percentage, 0) / analysis.repository_analysis.length) < 60
-                        ? "⚠️ Moderate AI usage - verify understanding in interview"
-                        : "🚨 High AI usage - conduct technical assessment"
-                      }
-                    </div>
-                  </div>
+                  )}
                 </motion.div>
               )}
 
-              {/* Red Flags Tab */}
-              {activeTab === 'redflags' && (
+              {/* Verdict Tab */}
+              {activeTab === 'verdict' && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="space-y-4"
+                  className="space-y-6"
                 >
-                  {analysis.red_flags.length > 0 ? (
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-red-800 mb-3">🚨 Global Red Flags</h4>
-                      {analysis.red_flags.map((flag, index) => (
-                        <div key={index} className="p-4 border-l-4 border-l-red-500 bg-red-50 rounded-lg">
-                          <p className="text-sm text-red-800">{flag}</p>
-                        </div>
-                      ))}
+                  {/* Hiring Verdict */}
+                  <div className={`p-6 rounded-lg border-l-4 ${hiringImpact.color.replace('text-', 'border-l-').replace('bg-', '').split(' ')[0]} ${hiringImpact.color}`}>
+                    <div className="flex items-center space-x-3 mb-4">
+                      <span className="text-2xl">{hiringImpact.icon}</span>
+                      <div>
+                        <h3 className="text-xl font-bold">Final Verdict: {hiringImpact.verdict}</h3>
+                        <p className="text-sm opacity-75">Confidence: {hiringImpact.confidence}%</p>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                      <h4 className="font-semibold text-gray-900 mb-2">No Red Flags Detected</h4>
-                      <p className="text-gray-600">The GitHub profile appears authentic and consistent.</p>
-                    </div>
-                  )}
+                    
+                    {analysis.hiring_verdict?.reasoning && (
+                      <ul className="space-y-1">
+                        {analysis.hiring_verdict.reasoning.map((reason, index) => (
+                          <li key={index} className="text-sm flex items-start">
+                            <span className="mr-2">•</span>
+                            {reason}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
 
-                  {/* Project-specific red flags */}
-                  {analysis.repository_analysis.some(p => p.red_flags.length > 0) && (
+                  {/* Recommendations */}
+                  {analysis.recommendations && analysis.recommendations.length > 0 && (
                     <div>
-                      <h4 className="font-semibold text-orange-800 mb-3">⚠️ Project-Specific Concerns</h4>
-                      {analysis.repository_analysis
-                        .filter(p => p.red_flags.length > 0)
-                        .map((project, index) => (
-                          <div key={index} className="p-4 border-l-4 border-l-orange-500 bg-orange-50 rounded-lg mb-3">
-                            <h5 className="font-medium text-orange-800 mb-2">{project.name}</h5>
-                            <ul className="space-y-1">
-                              {project.red_flags.map((flag, flagIndex) => (
-                                <li key={flagIndex} className="text-sm text-orange-700 flex items-start">
-                                  <span className="text-orange-500 mr-2">•</span>
-                                  {flag}
-                                </li>
-                              ))}
-                            </ul>
+                      <h4 className="font-semibold text-gray-900 mb-3">Action Items</h4>
+                      <div className="space-y-2">
+                        {analysis.recommendations.map((rec, index) => (
+                          <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-start justify-between">
+                              <span className="text-sm">{rec}</span>
+                            </div>
                           </div>
                         ))}
+                      </div>
                     </div>
                   )}
                 </motion.div>

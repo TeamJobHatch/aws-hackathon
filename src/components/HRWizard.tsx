@@ -9,7 +9,7 @@ import ConfirmJobDetails from './steps/ConfirmJobDetails'
 import ModelSelectionStep from './steps/ModelSelectionStep'
 import ResumeUploadStep from './steps/ResumeUploadStep'
 import AnalysisProgressStep from './steps/AnalysisProgressStep'
-import ResultsStep from './steps/ResultsStep'
+// Note: Using EnhancedResultsStep instead of ResultsStep
 import EnhancedResultsStep from './EnhancedResultsStep'
 import { JobDescription, Resume } from '@/types'
 

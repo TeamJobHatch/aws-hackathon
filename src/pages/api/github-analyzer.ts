@@ -1,9 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null
 
 interface GitHubProfile {
   login: string
@@ -81,6 +79,7 @@ interface ProjectAnalysis {
     url: string
     description: string
     working: boolean
+    hiring_impact: 'positive' | 'neutral' | 'negative'
   }>
   code_quality: {
     naming_score: number
@@ -91,10 +90,25 @@ interface ProjectAnalysis {
     professional_readme: boolean
     has_tests: boolean
     follows_conventions: boolean
+    gemini_confidence: number
   }
-  red_flags: string[]
-  positive_indicators: string[]
-  recommendations: string[]
+  red_flags: Array<{
+    type: 'critical' | 'moderate' | 'minor'
+    description: string
+    evidence: string
+    hiring_impact: 'negative' | 'caution'
+  }>
+  positive_indicators: Array<{
+    type: 'technical' | 'professional' | 'collaboration'
+    description: string
+    evidence: string
+    hiring_impact: 'positive' | 'strong_positive'
+  }>
+  recommendations: Array<{
+    action: string
+    priority: 'high' | 'medium' | 'low'
+    hiring_impact: 'positive' | 'negative' | 'neutral'
+  }>
   project_highlights: string[]
   technologies_detected: string[]
   project_complexity: 'beginner' | 'intermediate' | 'advanced' | 'expert'
@@ -103,6 +117,7 @@ interface ProjectAnalysis {
     is_group_project: boolean
     evidence: string[]
     individual_contribution_clarity: number
+    hiring_impact: 'positive' | 'negative' | 'neutral'
   }
 }
 
@@ -132,6 +147,11 @@ interface GitHubAnalysis {
     recommendation: 'strong_hire' | 'hire' | 'maybe' | 'no_hire'
     confidence: number
     reasoning: string[]
+  }
+  gemini_insights: {
+    ai_detection_confidence: number
+    overall_assessment: string
+    hiring_recommendation: string
   }
 }
 
@@ -300,7 +320,7 @@ async function fetchRepositoryDetails(username: string, repoName: string): Promi
       homepage: repoData.homepage,
       has_wiki: repoData.has_wiki,
       has_pages: repoData.has_pages,
-      readme_content: readmeContent.substring(0, 4000), // Increased for better analysis
+      readme_content: readmeContent.substring(0, 4000),
       commit_frequency: commitPatterns.total_commits,
       last_commit_date: repoData.updated_at,
       contributors_count: contributorsCount,
@@ -349,10 +369,19 @@ async function fetchGitHubRepositories(username: string): Promise<Repository[]> 
   }))
 }
 
-async function analyzeProjectWithAI(repoDetails: RepositoryDetails, resumeText: string, jobSkills: string[]): Promise<ProjectAnalysis> {
-  const prompt = `
-DEEP GITHUB REPOSITORY ANALYSIS
+async function analyzeProjectWithGemini(repoDetails: RepositoryDetails, resumeText: string, jobSkills: string[]): Promise<ProjectAnalysis> {
+  if (!genAI) {
+    throw new Error('Gemini API not configured')
+  }
 
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+
+  const prompt = `
+🔍 COMPREHENSIVE GITHUB REPOSITORY ANALYSIS (Powered by Gemini 2.5 Flash)
+
+You are a senior technical recruiter analyzing GitHub repositories for hiring decisions. Provide brutally honest assessment with specific hiring impact indicators.
+
+📊 REPOSITORY DATA:
 Repository: ${repoDetails.name}
 Description: ${repoDetails.description || 'No description'}
 Language: ${repoDetails.language || 'Unknown'}
@@ -366,128 +395,141 @@ Topics: ${repoDetails.topics?.join(', ') || 'None'}
 Homepage: ${repoDetails.homepage || 'None'}
 Has GitHub Pages: ${repoDetails.has_pages}
 
-COMMIT ANALYSIS:
+🔢 COMMIT PATTERNS:
 - Total Commits: ${repoDetails.commit_patterns.total_commits}
 - This Year: ${repoDetails.commit_patterns.commits_this_year}
 - Last Month: ${repoDetails.commit_patterns.commits_last_month}
 - Consistency Score: ${repoDetails.commit_patterns.commit_consistency_score}%
 - Batch Commit Dates: ${repoDetails.commit_patterns.batch_commit_dates.join(', ') || 'None'}
 
-README CONTENT:
+📖 README CONTENT:
 ${repoDetails.readme_content || 'No README available'}
 
-CANDIDATE'S RESUME:
+👤 CANDIDATE'S RESUME:
 ${resumeText.substring(0, 3000)}
 
-JOB REQUIREMENTS:
+🎯 JOB REQUIREMENTS:
 Required Skills: ${jobSkills.join(', ')}
 
-ANALYSIS REQUIREMENTS:
-Provide comprehensive JSON analysis focusing on hiring decision support:
+🎯 ANALYSIS REQUIREMENTS:
+Return comprehensive JSON analysis focusing on HIRING IMPACT:
 
 {
   "resume_mentioned": true/false,
-  "resume_evidence": "Exact text from resume that mentions this project",
+  "resume_evidence": "Exact quote from resume mentioning this project",
   "completeness_score": 85,
   "demo_links": [
     {
-      "type": "demo",
-      "url": "https://live-demo.com",
-      "description": "Live application demo",
-      "working": true
-    },
-    {
-      "type": "github_pages",
-      "url": "https://username.github.io/project",
-      "description": "GitHub Pages deployment",
-      "working": true
+      "type": "live_site",
+      "url": "https://example.com",
+      "description": "Production deployment",
+      "working": true,
+      "hiring_impact": "positive"
     }
   ],
   "code_quality": {
     "naming_score": 85,
     "comments_score": 70,
     "structure_score": 90,
-    "ai_usage_percentage": 15,
+    "ai_usage_percentage": 25,
     "overall_score": 82,
     "professional_readme": true,
     "has_tests": false,
-    "follows_conventions": true
+    "follows_conventions": true,
+    "gemini_confidence": 90
   },
-  "red_flags": ["Concern if any"],
-  "positive_indicators": ["Strength 1", "Strength 2"],
-  "recommendations": ["Hire/No hire recommendation"],
-  "project_highlights": ["Key achievement 1"],
-  "technologies_detected": ["React", "Node.js", "TypeScript"],
+  "red_flags": [
+    {
+      "type": "critical",
+      "description": "All commits made on same day as creation",
+      "evidence": "Repository created and finished in 1 day with 50+ commits",
+      "hiring_impact": "negative"
+    }
+  ],
+  "positive_indicators": [
+    {
+      "type": "technical",
+      "description": "Well-structured codebase with clear separation of concerns",
+      "evidence": "Multiple modules, clean imports, consistent naming",
+      "hiring_impact": "positive"
+    }
+  ],
+  "recommendations": [
+    {
+      "action": "Ask about project development timeline during interview",
+      "priority": "high",
+      "hiring_impact": "neutral"
+    }
+  ],
+  "project_highlights": ["Implements complex algorithm", "Production-ready"],
+  "technologies_detected": ["React", "TypeScript", "Node.js"],
   "project_complexity": "intermediate",
   "estimated_time_investment": "2-3 months",
   "collaboration_evidence": {
     "is_group_project": false,
-    "evidence": ["Evidence of group work or solo work"],
-    "individual_contribution_clarity": 85
+    "evidence": ["Solo commits", "Single author in README"],
+    "individual_contribution_clarity": 100,
+    "hiring_impact": "positive"
   }
 }
 
-DETAILED ANALYSIS CRITERIA:
+🔍 CRITICAL ANALYSIS AREAS:
 
-1. RESUME MATCHING (Critical):
+1. RESUME VERIFICATION:
    - Scan resume for project name, similar descriptions, technologies
-   - Look for timeline alignment with commit history
-   - Check if candidate claims ownership vs collaboration
+   - Check timeline alignment between resume claims and commit dates
+   - Identify if candidate claims solo vs group work
 
-2. COMPLETENESS ASSESSMENT (0-100):
-   - Demo links: Live demos (+30), GitHub Pages (+20), Videos (+15)
-   - Documentation: Professional README (+20), API docs (+10)
-   - Project setup: Clear installation (+10), usage examples (+5)
+2. AI USAGE DETECTION (GEMINI EXPERTISE):
+   - Analyze code patterns for AI generation (repetitive structures, perfect formatting, generic naming)
+   - Check for unexpectedly sophisticated code for claimed experience level
+   - Look for copy-paste patterns or boilerplate code without customization
+   - Estimate percentage with high confidence
 
-3. CODE QUALITY ANALYSIS (0-100 each):
-   - Naming: Variable/function/class naming conventions
-   - Comments: Code documentation, inline comments
-   - Structure: File organization, architecture patterns
-   - AI Usage: Detect patterns of AI-generated code (repetitive patterns, generic variable names, perfect formatting)
-   - Professional elements: Tests, linting, CI/CD, proper gitignore
+3. PROJECT COMPLETENESS:
+   - Demo links: Live sites (+30 points), GitHub Pages (+20), Videos (+15)
+   - Documentation: Professional README (+20), API docs (+15)
+   - Project polish: Tests (+15), CI/CD (+10), proper setup (+10)
 
 4. RED FLAG DETECTION:
-   - Batch commits (multiple projects uploaded same day)
-   - Unrealistic solo claims for complex projects
-   - No individual commits in group projects
-   - Copied/template projects without customization
-   - AI-generated code without understanding
+   - Batch commits: All work done in 1-2 days
+   - Unrealistic timeline: Complex project "completed" too quickly
+   - Group project red flags: Claims group work but no collaborator evidence
+   - Copy-paste indicators: Identical structures across projects
 
-5. COLLABORATION ANALYSIS:
-   - Group projects: Multiple contributors, issue discussions
-   - Individual contribution: Commit authorship, feature ownership
-   - Communication: Issue responses, PR comments
+5. POSITIVE INDICATORS:
+   - Original problem-solving approaches
+   - Gradual project evolution through commits
+   - Professional documentation and setup
+   - Real-world problem solutions
 
-6. TECHNOLOGY ALIGNMENT:
-   - Match detected technologies with job requirements
-   - Assess relevance to position
-   - Evaluate technology choices appropriateness
+6. HIRING IMPACT ASSESSMENT:
+   - "positive": Helps hiring case
+   - "strong_positive": Major hiring advantage
+   - "neutral": No impact on hiring
+   - "negative": Hurts hiring case
+   - "caution": Requires deeper investigation
 
-Be thorough and honest. This analysis directly impacts hiring decisions.
+Be extremely thorough. This analysis directly impacts hiring decisions. Focus on authenticity, technical skill demonstration, and real contribution assessment.
 `
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a senior technical recruiter and code reviewer with 10+ years of experience. Provide brutally honest analysis focused on hiring decisions. Detect AI usage patterns, authenticate project ownership, and assess real technical capabilities.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      max_tokens: 3000,
-      temperature: 0.1, // Lower temperature for more consistent analysis
-    })
+    const result = await model.generateContent(prompt)
+    const response = result.response
+    const responseText = response.text()
 
-    const responseText = completion.choices[0]?.message?.content || '{}'
+    // Clean and parse the response
     const cleanedResponse = responseText.replace(/```json\n?|\n?```/g, '').trim()
-    const analysis = JSON.parse(cleanedResponse)
+    let analysis
 
-    // Validate and enhance the analysis
+    try {
+      analysis = JSON.parse(cleanedResponse)
+    } catch (parseError) {
+      console.error('Failed to parse Gemini response:', parseError)
+      throw new Error('Invalid JSON response from Gemini')
+    }
+
+    // Validate and enhance the analysis with proper typing
     const enhancedAnalysis: ProjectAnalysis = {
       name: repoDetails.name,
       html_url: repoDetails.html_url,
@@ -498,7 +540,8 @@ Be thorough and honest. This analysis directly impacts hiring decisions.
         type: link.type || 'demo',
         url: link.url || '',
         description: link.description || 'Demo link',
-        working: link.working !== false // Default to true unless explicitly false
+        working: link.working !== false,
+        hiring_impact: ['positive', 'neutral', 'negative'].includes(link.hiring_impact) ? link.hiring_impact : 'neutral'
       })),
       code_quality: {
         naming_score: Math.min(100, Math.max(0, Number(analysis.code_quality?.naming_score) || 0)),
@@ -508,11 +551,26 @@ Be thorough and honest. This analysis directly impacts hiring decisions.
         overall_score: Math.min(100, Math.max(0, Number(analysis.code_quality?.overall_score) || 0)),
         professional_readme: Boolean(analysis.code_quality?.professional_readme),
         has_tests: Boolean(analysis.code_quality?.has_tests),
-        follows_conventions: Boolean(analysis.code_quality?.follows_conventions)
+        follows_conventions: Boolean(analysis.code_quality?.follows_conventions),
+        gemini_confidence: Math.min(100, Math.max(0, Number(analysis.code_quality?.gemini_confidence) || 70))
       },
-      red_flags: Array.isArray(analysis.red_flags) ? analysis.red_flags : [],
-      positive_indicators: Array.isArray(analysis.positive_indicators) ? analysis.positive_indicators : [],
-      recommendations: Array.isArray(analysis.recommendations) ? analysis.recommendations : [],
+      red_flags: (Array.isArray(analysis.red_flags) ? analysis.red_flags : []).map((flag: any) => ({
+        type: ['critical', 'moderate', 'minor'].includes(flag.type) ? flag.type : 'moderate',
+        description: flag.description || 'Potential concern detected',
+        evidence: flag.evidence || 'Evidence not provided',
+        hiring_impact: ['negative', 'caution'].includes(flag.hiring_impact) ? flag.hiring_impact : 'caution'
+      })),
+      positive_indicators: (Array.isArray(analysis.positive_indicators) ? analysis.positive_indicators : []).map((indicator: any) => ({
+        type: ['technical', 'professional', 'collaboration'].includes(indicator.type) ? indicator.type : 'technical',
+        description: indicator.description || 'Positive indicator',
+        evidence: indicator.evidence || 'Evidence found',
+        hiring_impact: ['positive', 'strong_positive'].includes(indicator.hiring_impact) ? indicator.hiring_impact : 'positive'
+      })),
+      recommendations: (Array.isArray(analysis.recommendations) ? analysis.recommendations : []).map((rec: any) => ({
+        action: rec.action || 'Review during interview',
+        priority: ['high', 'medium', 'low'].includes(rec.priority) ? rec.priority : 'medium',
+        hiring_impact: ['positive', 'negative', 'neutral'].includes(rec.hiring_impact) ? rec.hiring_impact : 'neutral'
+      })),
       project_highlights: Array.isArray(analysis.project_highlights) ? analysis.project_highlights : [],
       technologies_detected: Array.isArray(analysis.technologies_detected) ? analysis.technologies_detected : [],
       project_complexity: ['beginner', 'intermediate', 'advanced', 'expert'].includes(analysis.project_complexity) 
@@ -521,21 +579,23 @@ Be thorough and honest. This analysis directly impacts hiring decisions.
       collaboration_evidence: {
         is_group_project: Boolean(analysis.collaboration_evidence?.is_group_project),
         evidence: Array.isArray(analysis.collaboration_evidence?.evidence) ? analysis.collaboration_evidence.evidence : [],
-        individual_contribution_clarity: Math.min(100, Math.max(0, Number(analysis.collaboration_evidence?.individual_contribution_clarity) || 0))
+        individual_contribution_clarity: Math.min(100, Math.max(0, Number(analysis.collaboration_evidence?.individual_contribution_clarity) || 0)),
+        hiring_impact: ['positive', 'negative', 'neutral'].includes(analysis.collaboration_evidence?.hiring_impact) 
+          ? analysis.collaboration_evidence.hiring_impact : 'neutral'
       }
     }
 
-    // Add automatic demo links if homepage exists and not already included
+    // Auto-add demo links if missing
     if (repoDetails.homepage && !enhancedAnalysis.demo_links.find(link => link.url === repoDetails.homepage)) {
       enhancedAnalysis.demo_links.push({
         type: 'live_site',
         url: repoDetails.homepage,
         description: 'Project homepage',
-        working: true
+        working: true,
+        hiring_impact: 'positive'
       })
     }
 
-    // Add GitHub Pages link if available
     if (repoDetails.has_pages) {
       const githubPagesUrl = `https://${repoDetails.html_url.split('/')[3]}.github.io/${repoDetails.name}`
       if (!enhancedAnalysis.demo_links.find(link => link.url === githubPagesUrl)) {
@@ -543,7 +603,8 @@ Be thorough and honest. This analysis directly impacts hiring decisions.
           type: 'github_pages',
           url: githubPagesUrl,
           description: 'GitHub Pages deployment',
-          working: true
+          working: true,
+          hiring_impact: 'positive'
         })
       }
     }
@@ -551,7 +612,7 @@ Be thorough and honest. This analysis directly impacts hiring decisions.
     return enhancedAnalysis
 
   } catch (error) {
-    console.error('Enhanced project analysis failed:', error)
+    console.error('Gemini project analysis failed:', error)
     
     // Comprehensive fallback analysis
     const fallbackAnalysis: ProjectAnalysis = {
@@ -564,15 +625,25 @@ Be thorough and honest. This analysis directly impacts hiring decisions.
         naming_score: 70,
         comments_score: 50,
         structure_score: 60,
-        ai_usage_percentage: 10,
+        ai_usage_percentage: 20,
         overall_score: 60,
         professional_readme: Boolean(repoDetails.readme_content && repoDetails.readme_content.length > 200),
         has_tests: false,
-        follows_conventions: true
+        follows_conventions: true,
+        gemini_confidence: 30
       },
-      red_flags: [],
+      red_flags: [{
+        type: 'minor',
+        description: 'Analysis failed - manual review required',
+        evidence: 'Gemini analysis could not complete',
+        hiring_impact: 'caution'
+      }],
       positive_indicators: [],
-      recommendations: ['Conduct technical review during interview'],
+      recommendations: [{
+        action: 'Conduct thorough technical review during interview',
+        priority: 'high',
+        hiring_impact: 'neutral'
+      }],
       project_highlights: repoDetails.description ? [repoDetails.description] : [],
       technologies_detected: repoDetails.language ? [repoDetails.language] : [],
       project_complexity: 'intermediate',
@@ -580,17 +651,19 @@ Be thorough and honest. This analysis directly impacts hiring decisions.
       collaboration_evidence: {
         is_group_project: repoDetails.contributors_count > 1,
         evidence: [],
-        individual_contribution_clarity: 50
+        individual_contribution_clarity: 50,
+        hiring_impact: 'neutral'
       }
     }
 
-    // Add demo links from fallback sources
+    // Add fallback demo links
     if (repoDetails.homepage) {
       fallbackAnalysis.demo_links.push({
         type: 'live_site',
         url: repoDetails.homepage,
         description: 'Project homepage',
-        working: true
+        working: true,
+        hiring_impact: 'positive'
       })
     }
 
@@ -599,7 +672,8 @@ Be thorough and honest. This analysis directly impacts hiring decisions.
         type: 'github_pages',
         url: `https://${repoDetails.html_url.split('/')[3]}.github.io/${repoDetails.name}`,
         description: 'GitHub Pages deployment',
-        working: true
+        working: true,
+        hiring_impact: 'positive'
       })
     }
 
@@ -623,57 +697,34 @@ function detectAdvancedRedFlags(repositories: Repository[], projectAnalyses: Pro
     redFlags.push(`🚨 Batch upload detected: ${maxBatch} repositories created on ${batchUploads[0][0]}`)
   }
 
-  // 2. Unrealistic productivity patterns
-  const totalComplexProjects = projectAnalyses.filter(p => 
-    ['advanced', 'expert'].includes(p.project_complexity) && 
-    p.collaboration_evidence.individual_contribution_clarity > 80
-  ).length
-
-  if (totalComplexProjects > 3 && profile.created_at && 
-      (Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24 * 365) < 2) {
-    redFlags.push(`🤔 High productivity: ${totalComplexProjects} complex solo projects in less than 2 years`)
-  }
-
-  // 3. AI usage patterns
+  // 2. AI usage patterns from Gemini analysis
   const avgAIUsage = projectAnalyses.reduce((sum, p) => sum + p.code_quality.ai_usage_percentage, 0) / projectAnalyses.length
   if (avgAIUsage > 70) {
-    redFlags.push(`🤖 Extremely high AI usage: Average ${Math.round(avgAIUsage)}% AI-generated code detected`)
+    redFlags.push(`🤖 High AI dependency: Average ${Math.round(avgAIUsage)}% AI-generated code detected`)
   }
 
-  // 4. Commit pattern inconsistencies
-  const batchCommitProjects = projectAnalyses.filter(p => 
-    repositories.find(r => r.name === p.name && 
-      repositories.find(repo => repo.name === p.name)?.created_at.split('T')[0] === 
-      repositories.find(repo => repo.name === p.name)?.updated_at.split('T')[0]
-    )
-  ).length
-
-  if (batchCommitProjects > 2) {
-    redFlags.push(`⚠️ Suspicious commit patterns: ${batchCommitProjects} projects with all commits on same day`)
+  // 3. Critical red flags from individual projects
+  const criticalRedFlags = projectAnalyses.flatMap(p => p.red_flags.filter(f => f.type === 'critical'))
+  if (criticalRedFlags.length > 0) {
+    redFlags.push(`⚠️ Critical issues: ${criticalRedFlags.length} major concern(s) across projects`)
   }
 
-  // 5. Resume inconsistencies
+  // 4. Resume inconsistencies
   const resumeClaimedProjects = projectAnalyses.filter(p => p.resume_mentioned).length
   const actualProjects = projectAnalyses.length
   
   if (resumeClaimedProjects === 0 && actualProjects > 5) {
-    redFlags.push(`📄 Resume mismatch: No GitHub projects mentioned in resume despite ${actualProjects} repositories`)
+    redFlags.push(`📄 Resume mismatch: No GitHub projects mentioned despite ${actualProjects} repositories`)
   }
 
-  // 6. Collaboration red flags
+  // 5. Collaboration red flags
   const groupProjectsWithPoorClarity = projectAnalyses.filter(p => 
     p.collaboration_evidence.is_group_project && 
     p.collaboration_evidence.individual_contribution_clarity < 40
   ).length
 
   if (groupProjectsWithPoorClarity > 1) {
-    redFlags.push(`👥 Unclear contributions: ${groupProjectsWithPoorClarity} group projects with unclear individual contributions`)
-  }
-
-  // 7. Forked projects claiming
-  const forkedRepos = repositories.filter(r => r.fork).length
-  if (forkedRepos > repositories.length * 0.5 && repositories.length > 10) {
-    redFlags.push(`🍴 High fork ratio: ${forkedRepos}/${repositories.length} repositories are forks`)
+    redFlags.push(`👥 Unclear contributions: ${groupProjectsWithPoorClarity} group projects with unclear individual work`)
   }
 
   return redFlags
@@ -690,37 +741,40 @@ function calculateHiringVerdict(analysis: Omit<GitHubAnalysis, 'hiring_verdict'>
   const redFlagCount = analysis.red_flags.length
   const resumeMatchCount = analysis.overall_metrics.resume_matched_repos
 
+  // Enhanced decision logic with Gemini insights
+  const avgAIUsage = analysis.repository_analysis.reduce((sum, r) => sum + r.code_quality.ai_usage_percentage, 0) / analysis.repository_analysis.length
+  const criticalFlags = analysis.repository_analysis.flatMap(r => r.red_flags.filter(f => f.type === 'critical')).length
+
   let recommendation: GitHubAnalysis['hiring_verdict']['recommendation']
   let confidence: number
   let reasoning: string[] = []
 
-  // Decision logic
-  if (avgScore >= 85 && redFlagCount === 0 && resumeMatchCount > 0) {
+  if (avgScore >= 85 && redFlagCount === 0 && resumeMatchCount > 0 && avgAIUsage < 30) {
     recommendation = 'strong_hire'
     confidence = 95
     reasoning = [
-      `Exceptional technical profile (${Math.round(avgScore)}% overall score)`,
+      `Outstanding technical profile (${Math.round(avgScore)}% overall score)`,
       'No red flags detected',
-      `${resumeMatchCount} projects match resume claims`,
-      'High authenticity and code quality'
+      `${resumeMatchCount} verified resume projects`,
+      `Low AI dependency (${Math.round(avgAIUsage)}%)`
     ]
-  } else if (avgScore >= 75 && redFlagCount <= 1 && resumeMatchCount >= 1) {
+  } else if (avgScore >= 75 && criticalFlags === 0 && avgAIUsage < 50) {
     recommendation = 'hire'
     confidence = 85
     reasoning = [
       `Strong technical performance (${Math.round(avgScore)}% overall score)`,
-      redFlagCount === 0 ? 'Clean profile' : '1 minor concern detected',
-      `Resume verification successful`,
+      'No critical issues found',
+      `Reasonable AI usage (${Math.round(avgAIUsage)}%)`,
       'Recommended for technical interview'
     ]
-  } else if (avgScore >= 60 && redFlagCount <= 2) {
+  } else if (avgScore >= 60 && criticalFlags <= 1) {
     recommendation = 'maybe'
-    confidence = 60
+    confidence = 65
     reasoning = [
       `Moderate technical score (${Math.round(avgScore)}%)`,
       `${redFlagCount} concern(s) require review`,
-      'Consider for technical assessment',
-      'Requires thorough interview evaluation'
+      'Requires thorough technical assessment',
+      'Proceed with detailed interview'
     ]
   } else {
     recommendation = 'no_hire'
@@ -728,7 +782,7 @@ function calculateHiringVerdict(analysis: Omit<GitHubAnalysis, 'hiring_verdict'>
     reasoning = [
       `Low technical score (${Math.round(avgScore)}%)`,
       `${redFlagCount} red flag(s) detected`,
-      resumeMatchCount === 0 ? 'No resume verification' : 'Authenticity concerns',
+      criticalFlags > 0 ? `${criticalFlags} critical issue(s)` : 'Multiple concerns',
       'High risk candidate'
     ]
   }
@@ -744,10 +798,11 @@ function generateEnhancedChainOfThought(
   resumeMatches: number
 ): string[] {
   return [
-    `🔍 Initiating deep GitHub analysis for candidate: ${username}`,
+    `🔍 Starting Gemini-powered GitHub analysis for: ${username}`,
     `📊 Profile discovery: ${repositoryCount} public repositories found`,
     `🎯 Repository prioritization: Selected ${Math.min(analysisCount, repositoryCount)} most relevant projects`,
-    `📁 Detailed data collection: Fetching repository metadata, commits, and documentation`,
+    `🤖 Gemini 2.5 Flash analysis: Deep-diving into code quality and AI usage patterns`,
+    `📁 Comprehensive data collection: Repository metadata, commits, and documentation`,
     `🔗 Resume cross-reference: Matching projects against candidate claims`,
     `🏗️ Code quality assessment: Analyzing naming, structure, documentation, and AI usage`,
     `👥 Collaboration analysis: Evaluating group vs individual contributions`,
@@ -757,7 +812,7 @@ function generateEnhancedChainOfThought(
     `⚖️ Hiring decision synthesis: Weighing all factors for recommendation`,
     `${redFlags.length > 0 ? `⚠️ Alert: ${redFlags.length} red flag(s) detected requiring attention` : '✅ Clean profile: No major concerns identified'}`,
     `📋 Resume verification: ${resumeMatches > 0 ? `${resumeMatches} project(s) validated` : 'No matching projects found'}`,
-    `🎉 Analysis complete: Comprehensive GitHub evaluation ready for review`
+    `🎉 Gemini analysis complete: Comprehensive GitHub evaluation ready for review`
   ]
 }
 
@@ -771,6 +826,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!username) {
       return res.status(400).json({ error: 'GitHub username is required' })
+    }
+
+    if (!genAI) {
+      return res.status(500).json({ 
+        error: 'Gemini API not configured',
+        details: 'GEMINI_API_KEY environment variable is required',
+        apiStatus: 'error'
+      })
     }
 
     // Enhanced username validation
@@ -789,11 +852,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     }
 
-    console.log(`🔍 Starting deep GitHub analysis for: ${username}`)
+    console.log(`🔍 Starting Gemini-powered GitHub analysis for: ${username}`)
 
     // Fetch GitHub profile
     const profile = await fetchGitHubProfile(username)
-    console.log(`📊 Profile analysis: ${profile.public_repos} repos, ${profile.followers} followers, member since ${new Date(profile.created_at).getFullYear()}`)
+    console.log(`📊 Profile found: ${profile.public_repos} repos, ${profile.followers} followers, member since ${new Date(profile.created_at).getFullYear()}`)
     
     // Fetch repositories
     const repositories = await fetchGitHubRepositories(username)
@@ -816,21 +879,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                       (b.topics?.length || 0) * 5 + (b.homepage ? 10 : 0)
         return scoreB - scoreA
       })
-      .slice(0, 10) // Analyze top 10 repositories for comprehensive analysis
+      .slice(0, 8) // Analyze top 8 repositories for optimal performance
     
     console.log(`🎯 Repository prioritization: Analyzing ${prioritizedRepos.length} high-priority repositories`)
     
-    // Detailed repository analysis
+    // Detailed repository analysis with Gemini
     const repositoryAnalyses: ProjectAnalysis[] = []
     
     for (let i = 0; i < prioritizedRepos.length; i++) {
       const repo = prioritizedRepos[i]
-      console.log(`📝 Deep analysis ${i + 1}/${prioritizedRepos.length}: ${repo.name}`)
+      console.log(`🤖 Gemini analysis ${i + 1}/${prioritizedRepos.length}: ${repo.name}`)
       
       const repoDetails = await fetchRepositoryDetails(username, repo.name)
       
       if (repoDetails) {
-        const analysis = await analyzeProjectWithAI(repoDetails, resumeText, jobSkills)
+        const analysis = await analyzeProjectWithGemini(repoDetails, resumeText, jobSkills)
         repositoryAnalyses.push(analysis)
         console.log(`✅ Analysis complete for ${repo.name}: Quality=${analysis.code_quality.overall_score}%, AI=${analysis.code_quality.ai_usage_percentage}%`)
       }
@@ -847,18 +910,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const projectsWithDemos = repositoryAnalyses.filter(r => r.demo_links.length > 0).length
     const originalProjects = repositories.filter(r => !r.fork).length
     const forkedProjects = repositories.filter(r => r.fork).length
+    const avgGeminiConfidence = repositoryAnalyses.reduce((sum, r) => sum + r.code_quality.gemini_confidence, 0) / repositoryAnalyses.length
 
     if (avgCodeQuality > 80) positiveIndicators.push(`🏆 Excellent code quality: ${Math.round(avgCodeQuality)}% average`)
     if (resumeMatchedRepos > 0) positiveIndicators.push(`✅ Resume verified: ${resumeMatchedRepos} matching projects`)
     if (projectsWithDemos > repositoryAnalyses.length * 0.5) positiveIndicators.push(`🎯 Demo-oriented: ${projectsWithDemos} projects with live demos`)
     if (profile.followers > 50) positiveIndicators.push(`🌟 Community recognition: ${profile.followers} followers`)
     if (originalProjects > forkedProjects * 2) positiveIndicators.push(`💡 Original work focus: ${originalProjects} original vs ${forkedProjects} forked repos`)
+    if (avgGeminiConfidence > 85) positiveIndicators.push(`🤖 High analysis confidence: ${Math.round(avgGeminiConfidence)}% Gemini certainty`)
     
     // Calculate comprehensive metrics
     const technicalScore = Math.min(100, 
       (avgCodeQuality * 0.4) + 
-      (resumeMatchedRepos * 10) + 
-      (projectsWithDemos * 5) + 
+      (resumeMatchedRepos * 15) + 
+      (projectsWithDemos * 8) + 
       Math.min(20, profile.followers * 0.2)
     )
     
@@ -869,9 +934,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       (activeRepos.length * 2)
     )
 
-    const authenticityScore = Math.max(0, 100 - (globalRedFlags.length * 20) - 
-      (repositoryAnalyses.reduce((sum, r) => sum + r.code_quality.ai_usage_percentage, 0) / repositoryAnalyses.length * 0.3)
-    )
+    const avgAIUsage = repositoryAnalyses.reduce((sum, r) => sum + r.code_quality.ai_usage_percentage, 0) / repositoryAnalyses.length
+    const authenticityScore = Math.max(0, 100 - (globalRedFlags.length * 15) - (avgAIUsage * 0.3))
 
     const projectDiversityScore = Math.min(100, 
       new Set(repositoryAnalyses.flatMap(r => r.technologies_detected)).size * 10
@@ -900,8 +964,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (technicalScore > 85 && globalRedFlags.length === 0) {
       recommendations.push('✅ Strong hire: Exceptional technical profile with verified projects')
     }
-    if (repositoryAnalyses.reduce((sum, r) => sum + r.code_quality.ai_usage_percentage, 0) / repositoryAnalyses.length > 50) {
-      recommendations.push('🤖 AI dependency: High AI usage detected - assess independent coding ability')
+    if (avgAIUsage > 50) {
+      recommendations.push(`🤖 AI dependency: ${Math.round(avgAIUsage)}% average AI usage - assess independent coding ability`)
     }
 
     const analysis: Omit<GitHubAnalysis, 'hiring_verdict'> = {
@@ -926,7 +990,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       activity_score: Math.round(activityScore),
       authenticity_score: Math.round(authenticityScore),
       recommendations,
-      chain_of_thought: chainOfThought
+      chain_of_thought: chainOfThought,
+      gemini_insights: {
+        ai_detection_confidence: Math.round(avgGeminiConfidence),
+        overall_assessment: avgCodeQuality > 80 ? 'Strong technical candidate' : avgCodeQuality > 60 ? 'Moderate technical skills' : 'Requires assessment',
+        hiring_recommendation: technicalScore > 80 ? 'Recommended for hire' : technicalScore > 60 ? 'Consider with caution' : 'High risk candidate'
+      }
     }
 
     // Calculate hiring verdict
@@ -937,10 +1006,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       hiring_verdict: hiringVerdict
     }
 
-    console.log(`🎉 Deep analysis completed for ${username}`)
+    console.log(`🎉 Gemini analysis completed for ${username}`)
     console.log(`📊 Final scores - Technical: ${finalAnalysis.technical_score}%, Activity: ${finalAnalysis.activity_score}%, Authenticity: ${finalAnalysis.authenticity_score}%`)
     console.log(`🎯 Hiring verdict: ${hiringVerdict.recommendation.toUpperCase()} (${hiringVerdict.confidence}% confidence)`)
-    console.log(`⚠️ Quality assessment: ${globalRedFlags.length} red flags, ${resumeMatchedRepos} resume matches, ${avgCodeQuality}% avg quality`)
+    console.log(`🤖 Gemini insights: ${Math.round(avgAIUsage)}% avg AI usage, ${Math.round(avgGeminiConfidence)}% confidence`)
 
     res.status(200).json({
       success: true,
@@ -950,7 +1019,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
 
   } catch (error: any) {
-    console.error('❌ GitHub deep analysis failed for:', req.body?.username, 'Error:', error.message)
+    console.error('❌ Gemini GitHub analysis failed for:', req.body?.username, 'Error:', error.message)
     
     // Enhanced error handling
     if (error.message.includes('not found')) {
@@ -970,10 +1039,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         suggestion: 'Please try again in a few minutes'
       })
     }
+
+    if (error.message.includes('Gemini API not configured')) {
+      return res.status(500).json({
+        error: 'Gemini API not configured',
+        details: 'GEMINI_API_KEY environment variable is required',
+        apiStatus: 'error',
+        suggestion: 'Configure Gemini API key in environment variables'
+      })
+    }
     
     res.status(500).json({
       error: 'Failed to analyze GitHub profile',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Deep analysis failed',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Gemini analysis failed',
       apiStatus: 'error',
       username: req.body?.username
     })
