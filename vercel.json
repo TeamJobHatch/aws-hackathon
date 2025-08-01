@@ -3,5 +3,16 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "installCommand": "npm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "src/pages/api/analyze-resume.ts": {
+      "maxDuration": 60
+    },
+    "src/pages/api/linkedin-analyzer.ts": {
+      "maxDuration": 30
+    },
+    "src/pages/api/github-analyzer.ts": {
+      "maxDuration": 30
+    }
+  }
 } 

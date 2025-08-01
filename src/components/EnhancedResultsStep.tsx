@@ -291,6 +291,20 @@ export default function EnhancedResultsStep({
                         {resume.links.website && formatLink(resume.links.website, 'website')}
                       </div>
                     )}
+                    {/* Debug info for development */}
+                    {process.env.NODE_ENV === 'development' && (
+                      <div className="text-xs text-gray-400 mt-2 space-y-1">
+                        <div>Links: {resume.links ? Object.keys(resume.links).filter(key => resume.links[key]).length : 0} found</div>
+                        <div>LinkedIn Analysis: {resume.analysis?.linkedinAnalysis ? '✅' : '❌'}</div>
+                        <div>GitHub Analysis: {resume.analysis?.githubAnalysis ? '✅' : '❌'}</div>
+                        {resume.analysis?.linkedinAnalysis && (
+                          <div>LinkedIn Score: {resume.analysis.linkedinAnalysis.honesty_score}%</div>
+                        )}
+                        {resume.analysis?.githubAnalysis && (
+                          <div>GitHub Score: {resume.analysis.githubAnalysis.technical_score}%</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
                 

@@ -56,14 +56,118 @@ function extractCandidateInfo(resumeText: string): { name: string; email?: strin
   }
 }
 
+function createFallbackLinkedInAnalysis(linkedinUrl: string, resumeText: string) {
+  console.log('Creating fallback LinkedIn analysis...')
+  
+  return {
+    profile_url: linkedinUrl,
+    honesty_score: 75, // Neutral score when analysis fails
+    profile_data: {
+      name: 'Profile analysis unavailable',
+      title: 'Unable to fetch profile data',
+      company: 'N/A',
+      location: 'N/A',
+      experience: [],
+      education: [],
+      skills: [],
+      certifications: [],
+      languages: [],
+      connections: 0,
+      profilePicture: false,
+      headline: '',
+      summary: ''
+    },
+    inconsistencies: [],
+    verified_info: [
+      `Profile URL: ${linkedinUrl}`,
+      'Note: Full analysis unavailable in this environment'
+    ],
+    red_flags: ['LinkedIn analysis service temporarily unavailable'],
+    positive_indicators: ['LinkedIn profile URL provided'],
+    recommendations: [
+      'Manual verification of LinkedIn profile recommended',
+      'Check profile authenticity during interview process'
+    ],
+    profile_completeness: 50,
+    professional_score: 50,
+    chain_of_thought: [
+      'LinkedIn analysis service encountered an error',
+      'Falling back to basic profile acknowledgment',
+      'Manual review recommended for this candidate'
+    ]
+  }
+}
+
+function createFallbackGitHubAnalysis(githubUrl: string, username: string, resumeText: string) {
+  console.log('Creating fallback GitHub analysis...')
+  
+  return {
+    username: username,
+    profile: {
+      login: username,
+      name: 'Profile analysis unavailable',
+      bio: undefined,
+      avatar_url: '',
+      html_url: githubUrl,
+      public_repos: 0,
+      followers: 0,
+      following: 0,
+      created_at: '2020-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+      company: undefined,
+      location: undefined
+    },
+    repository_analysis: [],
+    overall_metrics: {
+      total_repos: 0,
+      active_repos: 0,
+      resume_matched_repos: 0,
+      average_code_quality: 50,
+      commit_consistency: 50,
+      collaboration_score: 50,
+      original_projects: 0,
+      forked_projects: 0,
+      project_diversity_score: 50
+    },
+    red_flags: ['GitHub analysis service temporarily unavailable'],
+    positive_indicators: ['GitHub profile URL provided'],
+    technical_score: 50,
+    activity_score: 50,
+    authenticity_score: 50,
+    recommendations: [
+      'Manual review of GitHub profile recommended',
+      'Verify repositories and code quality during technical interview'
+    ],
+    chain_of_thought: [
+      'GitHub analysis service encountered an error',
+      'Falling back to basic profile acknowledgment',
+      'Technical assessment recommended during interview process'
+    ],
+    hiring_verdict: {
+      recommendation: 'maybe' as const,
+      confidence: 50,
+      reasoning: ['Analysis service unavailable', 'Manual verification needed']
+    },
+    gemini_insights: {
+      ai_detection_confidence: 50,
+      overall_assessment: 'Analysis unavailable - manual review required',
+      hiring_recommendation: 'Conduct technical interview to assess capabilities'
+    }
+  }
+}
+
 async function fallbackLinkExtraction(resumeText: string): Promise<{ github?: string; linkedin?: string; portfolio?: string; website?: string; other: { url: string; type: string }[] }> {
   console.log('=== FALLBACK LINK EXTRACTION ===')
   console.log('Searching resume text for any URLs...')
   
-  // Multiple regex patterns to catch different formats
+  // Enhanced regex patterns to catch more URL variations
   const urlRegex = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=]*)/gi
-  const githubPattern = /github\.com\/([a-zA-Z0-9-_]+)/gi
-  const linkedinPattern = /linkedin\.com\/in\/([a-zA-Z0-9-_]+)/gi
+  const githubPattern = /(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9-_]+)/gi
+  const linkedinPattern = /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/([a-zA-Z0-9-_]+)/gi
+  
+  // Additional patterns for partial URLs
+  const githubUserPattern = /github:?\s*([a-zA-Z0-9-_]+)/gi
+  const linkedinUserPattern = /linkedin:?\s*([a-zA-Z0-9-_]+)/gi
   
   const urls = resumeText.match(urlRegex) || []
   const githubMatches = resumeText.match(githubPattern) || []
@@ -100,7 +204,10 @@ async function fallbackLinkExtraction(resumeText: string): Promise<{ github?: st
   if (linkedinMatches.length > 0 && !links.linkedin) {
     for (const match of linkedinMatches) {
       if (match.includes('linkedin.com/in/')) {
-        links.linkedin = match.startsWith('http') ? match : `https://${match}`
+        let url = match.startsWith('http') ? match : `https://${match}`
+        // Clean up the URL
+        url = url.replace(/[).,;]$/, '') // Remove trailing punctuation
+        links.linkedin = url
         console.log('Fallback extracted LinkedIn:', links.linkedin)
         break
       }
@@ -124,13 +231,24 @@ async function fallbackLinkExtraction(resumeText: string): Promise<{ github?: st
 }
 
 async function extractCandidateLinksWithAI(resumeText: string): Promise<{ github?: string; linkedin?: string; portfolio?: string; website?: string; other: { url: string; type: string }[] }> {
-  console.log('=== STARTING AI LINK EXTRACTION ===')
+  console.log('=== STARTING ROBUST LINK EXTRACTION ===')
   console.log('Resume text length:', resumeText.length)
-  console.log('Resume text sample:', resumeText.substring(0, 1000))
+  console.log('Resume text sample:', resumeText.substring(0, 500))
   console.log('OpenAI API Key exists:', !!process.env.OPENAI_API_KEY)
+  console.log('Environment:', process.env.NODE_ENV)
 
-  // FORCE TESTING: Always try AI extraction first, then fallback
-  console.log('Attempting AI-powered extraction...')
+  // Always try fallback first for Vercel reliability
+  console.log('Getting fallback extraction first for reliability...')
+  const fallbackResult = await fallbackLinkExtraction(resumeText)
+  console.log('Fallback extraction result:', fallbackResult)
+
+  // Skip AI if no API key (prevents Vercel errors)
+  if (!process.env.OPENAI_API_KEY) {
+    console.log('No OpenAI API key - using fallback only')
+    return fallbackResult
+  }
+
+  console.log('Attempting AI-powered extraction with timeout...')
 
   const prompt = `
 EXTRACT PROFESSIONAL LINKS FROM THIS RESUME:
@@ -158,7 +276,12 @@ INSTRUCTIONS:
 FOCUS ON: github.com links, linkedin.com/in links, portfolio sites, personal websites`
 
   try {
-    const completion = await openai.chat.completions.create({
+    // Create timeout promise for Vercel compatibility
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('AI extraction timeout after 15 seconds')), 15000)
+    })
+
+    const aiPromise = openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
@@ -174,6 +297,8 @@ FOCUS ON: github.com links, linkedin.com/in links, portfolio sites, personal web
       temperature: 0.1,
     })
 
+    const completion = await Promise.race([aiPromise, timeoutPromise])
+
     const response = completion.choices[0]?.message?.content || '{}'
     const cleanedResponse = response.replace(/```json\n?|\n?```/g, '').trim()
     
@@ -181,21 +306,21 @@ FOCUS ON: github.com links, linkedin.com/in links, portfolio sites, personal web
     
     const parsed = JSON.parse(cleanedResponse)
     
-    // Validate and clean the extracted links
+    // Start with fallback results, then enhance with AI results
     const links = {
-      github: undefined as string | undefined,
-      linkedin: undefined as string | undefined,
-      portfolio: undefined as string | undefined,
-      website: undefined as string | undefined,
-      other: [] as { url: string; type: string }[]
+      github: fallbackResult.github,
+      linkedin: fallbackResult.linkedin,
+      portfolio: fallbackResult.portfolio,
+      website: fallbackResult.website,
+      other: [...fallbackResult.other]
     }
 
-    // Validate GitHub URL
+    // Override with AI results if they are better/valid
     if (parsed.github && typeof parsed.github === 'string') {
       const githubUrl = parsed.github.trim()
       if (githubUrl.includes('github.com/') && !githubUrl.includes('@') && !githubUrl.includes('.edu')) {
         links.github = githubUrl.startsWith('http') ? githubUrl : `https://${githubUrl}`
-        console.log('AI extracted GitHub:', links.github)
+        console.log('AI enhanced GitHub:', links.github)
       }
     }
 
@@ -204,7 +329,7 @@ FOCUS ON: github.com links, linkedin.com/in links, portfolio sites, personal web
       const linkedinUrl = parsed.linkedin.trim()
       if (linkedinUrl.includes('linkedin.com/in/')) {
         links.linkedin = linkedinUrl.startsWith('http') ? linkedinUrl : `https://${linkedinUrl}`
-        console.log('AI extracted LinkedIn:', links.linkedin)
+        console.log('AI enhanced LinkedIn:', links.linkedin)
       }
     }
 
@@ -213,7 +338,7 @@ FOCUS ON: github.com links, linkedin.com/in links, portfolio sites, personal web
       const portfolioUrl = parsed.portfolio.trim()
       if (portfolioUrl.includes('.') && !portfolioUrl.includes('@')) {
         links.portfolio = portfolioUrl.startsWith('http') ? portfolioUrl : `https://${portfolioUrl}`
-        console.log('AI extracted Portfolio:', links.portfolio)
+        console.log('AI enhanced Portfolio:', links.portfolio)
       }
     }
 
@@ -222,7 +347,7 @@ FOCUS ON: github.com links, linkedin.com/in links, portfolio sites, personal web
       const websiteUrl = parsed.website.trim()
       if (websiteUrl.includes('.') && !websiteUrl.includes('@')) {
         links.website = websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`
-        console.log('AI extracted Website:', links.website)
+        console.log('AI enhanced Website:', links.website)
       }
     }
 
@@ -239,29 +364,14 @@ FOCUS ON: github.com links, linkedin.com/in links, portfolio sites, personal web
       }
     }
 
-    console.log('Final AI-extracted links:', links)
+    console.log('Final enhanced links (fallback + AI):', links)
     return links
 
   } catch (error) {
-    console.error('AI link extraction failed:', error)
-    console.log('Falling back to regex-based extraction...')
+    console.error('AI enhancement failed (using fallback):', error)
+    console.log('Returning fallback extraction result')
     
-    // Try fallback extraction
-    const fallbackResult = await fallbackLinkExtraction(resumeText)
-    console.log('Fallback extraction result:', fallbackResult)
-    
-    // If still no links found, force some test data for Simon Tian
-    if (!fallbackResult.github && !fallbackResult.linkedin && !fallbackResult.portfolio && resumeText.toLowerCase().includes('simon')) {
-      console.log('No links found even in fallback, adding test links for Simon Tian...')
-      return {
-        github: "https://github.com/simontian2024",
-        linkedin: "https://linkedin.com/in/simon-tian-cornell", 
-        portfolio: "https://simontian.dev",
-        website: undefined,
-        other: []
-      }
-    }
-    
+    // Return the fallback result we already have
     return fallbackResult
   }
 }
@@ -441,14 +551,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               /^[a-zA-Z0-9-_]+$/.test(githubUsername)) {
             
             console.log('💻 Starting deep GitHub analysis for:', githubUsername)
-            const githubResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/github-analyzer`, {
+            
+            // Construct the correct URL for both Vercel and local development
+            const baseUrl = process.env.VERCEL_URL 
+              ? `https://${process.env.VERCEL_URL}` 
+              : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+            
+            console.log('Using base URL for GitHub analysis:', baseUrl)
+            
+            const githubResponse = await fetch(`${baseUrl}/api/github-analyzer`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 username: githubUsername,
                 jobSkills: jobDescription.skills,
                 resumeText: resumeText
-              })
+              }),
+              // Add timeout for Vercel
+              signal: AbortSignal.timeout(25000)
             })
 
                       if (githubResponse.ok) {
@@ -465,18 +585,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 })
               } else {
                 console.log('❌ GitHub analysis response invalid:', githubData)
+                
+                // Add fallback GitHub analysis
+                analysis.githubAnalysis = createFallbackGitHubAnalysis(candidateLinks.github, githubUsername, resumeText)
               }
             } else {
               console.log('❌ GitHub analysis failed with status:', githubResponse.status)
               const errorText = await githubResponse.text()
               console.log('GitHub error response:', errorText)
+              
+              // Add fallback GitHub analysis
+              analysis.githubAnalysis = createFallbackGitHubAnalysis(candidateLinks.github, githubUsername, resumeText)
             }
         } else {
           console.log('Invalid GitHub username detected, skipping analysis:', githubUsername)
         }
       } catch (error) {
         console.log('GitHub analysis failed:', error)
-        // Continue without GitHub analysis
+        
+        // Add fallback GitHub analysis
+        const githubUsername = candidateLinks.github.split('/').pop()
+        if (githubUsername) {
+          analysis.githubAnalysis = createFallbackGitHubAnalysis(candidateLinks.github, githubUsername, resumeText)
+        }
       }
     } else {
       console.log('No GitHub URL found in candidate links')
@@ -487,13 +618,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         console.log('🔍 Starting LinkedIn profile analysis:', candidateLinks.linkedin)
         
-        const linkedinResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/linkedin-analyzer`, {
+        // Construct the correct URL for both Vercel and local development
+        const baseUrl = process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+        
+        console.log('Using base URL for LinkedIn analysis:', baseUrl)
+        
+        const linkedinResponse = await fetch(`${baseUrl}/api/linkedin-analyzer`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             linkedInUrl: candidateLinks.linkedin,
             resumeText: resumeText
-          })
+          }),
+          // Add timeout for Vercel
+          signal: AbortSignal.timeout(25000)
         })
 
         if (linkedinResponse.ok) {
@@ -510,10 +650,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log('❌ LinkedIn analysis failed with status:', linkedinResponse.status)
           const errorText = await linkedinResponse.text()
           console.log('LinkedIn error response:', errorText)
+          
+          // Add fallback LinkedIn analysis
+          analysis.linkedinAnalysis = createFallbackLinkedInAnalysis(candidateLinks.linkedin, resumeText)
         }
       } catch (error) {
         console.log('❌ LinkedIn analysis failed with error:', error)
-        // Continue without LinkedIn analysis
+        
+        // Add fallback LinkedIn analysis
+        analysis.linkedinAnalysis = createFallbackLinkedInAnalysis(candidateLinks.linkedin, resumeText)
       }
     } else {
       console.log('ℹ️ No LinkedIn URL found for profile analysis')

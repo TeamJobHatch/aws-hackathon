@@ -40,7 +40,7 @@ export default function HRWizard() {
     analysisSteps: [],
     apiStatus: 'unknown',
     apiMessage: undefined,
-    selectedAIModel: 'openai'
+    selectedAIModel: 'gemini'
   })
 
   // Test AI models connection on component mount
