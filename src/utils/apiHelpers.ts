@@ -267,7 +267,9 @@ export function checkRateLimit(
 // Cleanup old rate limit entries
 setInterval(() => {
   const now = Date.now()
-  for (const [key, value] of rateLimitStore.entries()) {
+  // Convert entries to array to fix TypeScript iteration issue
+  const entries = Array.from(rateLimitStore.entries())
+  for (const [key, value] of entries) {
     if (now > value.resetTime) {
       rateLimitStore.delete(key)
     }
