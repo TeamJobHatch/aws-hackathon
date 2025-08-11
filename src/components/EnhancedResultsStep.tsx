@@ -239,7 +239,7 @@ export default function EnhancedResultsStep({
         </div>
         <div className="bg-white p-6 rounded-xl border border-gray-200 text-center">
           <div className="text-2xl font-bold text-orange-600">
-            {state.selectedAIModel === 'openai' ? 'GPT-4o' : 'Gemini 1.5'}
+            {state.selectedAIModel === 'openai' ? 'GPT-4o' : 'Gemini 2.5'}
           </div>
           <div className="text-sm text-gray-600">AI Model Used</div>
         </div>

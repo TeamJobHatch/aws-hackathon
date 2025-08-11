@@ -93,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               processingTime: '2-4 seconds'
             },
             gemini: {
-              name: 'Google Gemini 1.5',
+              name: 'Google Gemini 2.5',
               confidence: '90%',
               processingTime: '1-3 seconds'
             }

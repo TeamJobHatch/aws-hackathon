@@ -26,7 +26,7 @@
 
 ### **AI & Machine Learning**
 - **OpenAI GPT-4o** - Primary AI for resume analysis and matching
-- **Google Gemini 1.5** - Alternative AI model with fast processing
+- **Google Gemini 2.5** - Alternative AI model with fast processing
 - **Model Selection** - User can choose between OpenAI and Gemini
 - **Enhanced Analysis** - Processing time tracking and confidence scoring
 
@@ -63,7 +63,7 @@
 - **Welcome Step**: Introduction and feature overview
 - **Job Description Step**: Upload or manual entry of job descriptions
 - **Confirm Details Step**: Review and validate job information
-- **Model Selection Step**: Choose between OpenAI GPT-4o and Google Gemini 1.5
+- **Model Selection Step**: Choose between OpenAI GPT-4o and Google Gemini 2.5
 - **Resume Upload Step**: Bulk upload of candidate resumes
 - **Analysis Progress Step**: Real-time AI analysis with progress tracking
 - **Results Step**: Comprehensive candidate rankings and insights
@@ -159,7 +159,7 @@ aws-hackathon/
 #### **🔥 `/api/analyze-resume-enhanced.ts`** - Enhanced Analysis Engine
 - **Purpose**: Main resume analysis with model selection support
 - **Input**: Job description + candidate resumes + selected AI model
-- **AI Models**: OpenAI GPT-4o or Google Gemini 1.5 (user selectable)
+- **AI Models**: OpenAI GPT-4o or Google Gemini 2.5 (user selectable)
 - **Output**: Enhanced `ResumeAnalysis` objects with processing metrics
 
 #### **🧪 `/api/test-ai-models.ts`** - Model Testing & Status
@@ -270,7 +270,7 @@ npm run lint
 1. **Welcome**: Feature introduction and API status check
 2. **Job Description**: Upload PDF/DOC or manual entry
 3. **Confirm Details**: Review parsed job information
-4. **Model Selection**: Choose between OpenAI GPT-4o and Google Gemini 1.5
+4. **Model Selection**: Choose between OpenAI GPT-4o and Google Gemini 2.5
 5. **Resume Upload**: Bulk upload candidate resumes
 6. **Analysis**: Watch real-time AI processing with progress steps
 7. **Results**: View ranked candidates with detailed insights
@@ -337,7 +337,7 @@ const goToNextStep = () => {
 
 ### **✅ Recently Added - January 2025**
 1. **Dual AI Model Support**
-   - Added Google Gemini 1.5 as alternative to OpenAI GPT-4o
+   - Added Google Gemini 2.5 as alternative to OpenAI GPT-4o
    - User-selectable model choice in new wizard step
    - Real-time model status testing and recommendations
 

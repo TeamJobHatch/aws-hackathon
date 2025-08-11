@@ -137,7 +137,7 @@ async function analyzeWithGemini(resumeText: string, jobDescription: JobDescript
   }
 
   const startTime = Date.now()
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   const prompt = `You are an expert HR analyst. Analyze this resume against the job description and provide a comprehensive evaluation.
 
@@ -203,7 +203,7 @@ Provide analysis in this exact JSON format:
     return {
       ...analysis,
       aiModel: 'gemini' as const,
-      modelVersion: 'gemini-1.5-flash',
+      modelVersion: 'gemini-2.5-flash',
       processingTime,
       confidence: Math.min(90, analysis.matchPercentage) // Gemini tends to be slightly less confident
     }

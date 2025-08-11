@@ -374,7 +374,7 @@ async function analyzeProjectWithGemini(repoDetails: RepositoryDetails, resumeTe
     throw new Error('Gemini API not configured')
   }
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   const prompt = `
 🔍 COMPREHENSIVE GITHUB REPOSITORY ANALYSIS (Powered by Gemini 2.5 Flash)

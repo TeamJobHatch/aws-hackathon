@@ -115,7 +115,7 @@ export default function ModelSelectionStep({
           <div className="text-center">
             <p className="text-sm text-gray-500 mb-2">
               Selected: <span className="font-medium text-gray-900">
-                {state.selectedAIModel === 'openai' ? 'OpenAI GPT-4o' : 'Google Gemini 1.5'}
+                {state.selectedAIModel === 'openai' ? 'OpenAI GPT-4o' : 'Google Gemini 2.5'}
               </span>
             </p>
             {!canProceed && (

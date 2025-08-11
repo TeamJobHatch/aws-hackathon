@@ -8,12 +8,12 @@ import JobDescriptionStep from './steps/JobDescriptionStep'
 import ConfirmJobDetails from './steps/ConfirmJobDetails'
 import ModelSelectionStep from './steps/ModelSelectionStep'
 import ResumeUploadStep from './steps/ResumeUploadStep'
-import AnalysisProgressStep from './steps/AnalysisProgressStep'
+// AnalysisProgressStep removed - functionality integrated into ResumeUploadStep
 // Note: Using EnhancedResultsStep instead of ResultsStep
 import EnhancedResultsStep from './EnhancedResultsStep'
 import { JobDescription, Resume } from '@/types'
 
-export type WizardStep = 'welcome' | 'job-description' | 'confirm-details' | 'model-selection' | 'resume-upload' | 'analysis' | 'results'
+export type WizardStep = 'welcome' | 'job-description' | 'confirm-details' | 'model-selection' | 'resume-upload' | 'results'
 
 interface HRWizardState {
   currentStep: WizardStep
@@ -86,7 +86,6 @@ export default function HRWizard() {
     { id: 'confirm-details', title: 'Confirm Details', description: 'Review job information' },
     { id: 'model-selection', title: 'AI Model', description: 'Choose analysis model' },
     { id: 'resume-upload', title: 'Upload Resumes', description: 'Add candidate resumes' },
-    { id: 'analysis', title: 'AI Analysis', description: 'Processing candidates' },
     { id: 'results', title: 'Results', description: 'View rankings and insights' }
   ]
 
@@ -390,8 +389,7 @@ export default function HRWizard() {
           return <ModelSelectionStep {...stepProps} />
         case 'resume-upload':
           return <ResumeUploadStep {...stepProps} />
-        case 'analysis':
-          return <AnalysisProgressStep {...stepProps} />
+        // Analysis step removed - functionality integrated into ResumeUploadStep
         case 'results':
           return <EnhancedResultsStep {...stepProps} />
         default:

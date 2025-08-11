@@ -26,21 +26,8 @@ export default function ChainOfThoughtDisplay({
   const [visibleSteps, setVisibleSteps] = useState<ChainOfThoughtStep[]>([])
 
   useEffect(() => {
-    // Animate steps appearing one by one
-    steps.forEach((step, index) => {
-      setTimeout(() => {
-        setVisibleSteps(prev => {
-          const exists = prev.find(s => s.id === step.id)
-          if (exists) {
-            // Update existing step
-            return prev.map(s => s.id === step.id ? step : s)
-          } else {
-            // Add new step
-            return [...prev, step]
-          }
-        })
-      }, index * 200)
-    })
+    // Directly set visible steps without animation delays for better performance
+    setVisibleSteps(steps)
   }, [steps])
 
   const getStepIcon = (step: ChainOfThoughtStep) => {

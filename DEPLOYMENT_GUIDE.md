@@ -3,7 +3,7 @@
 ## ✅ **Ready for Deployment!**
 
 Your JobHatch HR Screening Platform is now configured with:
-- ✅ **Gemini as default AI model** (Google Gemini 1.5)
+- ✅ **Gemini as default AI model** (Google Gemini 2.5)
 - ✅ **Fixed LinkedIn & GitHub analysis** for Vercel
 - ✅ **Robust fallback systems** for API failures
 - ✅ **Enhanced error handling** and timeouts
@@ -127,7 +127,7 @@ Visit: `https://your-project.vercel.app/api/test-ai-models`
 - Resume upload and parsing (PDF, DOCX)
 - Job description analysis
 - AI-powered candidate matching
-- Gemini 1.5 as default AI model
+- Gemini 2.5 as default AI model
 
 ### **✅ LinkedIn Analysis:**
 - Profile credibility scoring

@@ -33,7 +33,7 @@ export default function ModelSelector({ selectedModel, onModelChange, disabled =
     gemini: {
       id: 'gemini',
       name: 'gemini',
-      displayName: 'Google Gemini 1.5',
+      displayName: 'Google Gemini 2.5',
       description: 'Fast processing with multimodal capabilities',
       status: 'unknown',
       available: false,

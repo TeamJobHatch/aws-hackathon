@@ -100,7 +100,7 @@ async function testGemini(): Promise<ModelTestResult> {
   try {
     if (!process.env.GEMINI_API_KEY) {
       return {
-        model: 'Google Gemini 1.5',
+        model: 'Google Gemini 2.5',
         success: false,
         apiStatus: 'error',
         message: 'Gemini API key not configured',
@@ -111,7 +111,7 @@ async function testGemini(): Promise<ModelTestResult> {
 
     if (!genAI) {
       return {
-        model: 'Google Gemini 1.5',
+        model: 'Google Gemini 2.5',
         success: false,
         apiStatus: 'error',
         message: 'Gemini client initialization failed',
@@ -133,7 +133,7 @@ async function testGemini(): Promise<ModelTestResult> {
     
     if (response.includes('GEMINI_TEST_SUCCESS')) {
       return {
-        model: 'Google Gemini 1.5',
+        model: 'Google Gemini 2.5',
         success: true,
         apiStatus: 'working',
         message: 'Gemini API is working correctly',
@@ -143,7 +143,7 @@ async function testGemini(): Promise<ModelTestResult> {
       }
     } else {
       return {
-        model: 'Google Gemini 1.5',
+        model: 'Google Gemini 2.5',
         success: false,
         apiStatus: 'limited',
         message: 'Gemini API responded but with unexpected content',
@@ -169,7 +169,7 @@ async function testGemini(): Promise<ModelTestResult> {
     }
 
     return {
-      model: 'Google Gemini 1.5',
+      model: 'Google Gemini 2.5',
       success: false,
       apiStatus: errorStatus,
       message: errorMessage,

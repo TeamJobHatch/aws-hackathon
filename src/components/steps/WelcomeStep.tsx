@@ -8,25 +8,15 @@ interface WelcomeStepProps {
   goToNextStep: () => void
 }
 
-// Animated Counter Component
+// Optimized Counter Component
 const AnimatedCounter = ({ target, suffix = '' }: { target: number; suffix?: string }) => {
   const [current, setCurrent] = useState(0)
   
   useEffect(() => {
+    // Simplified animation without heavy intervals
     const timer = setTimeout(() => {
-      const increment = target / 50
-      const interval = setInterval(() => {
-        setCurrent(prev => {
-          const next = prev + increment
-          if (next >= target) {
-            clearInterval(interval)
-            return target
-          }
-          return next
-        })
-      }, 30)
-      return () => clearInterval(interval)
-    }, 500)
+      setCurrent(target)
+    }, 800)
     
     return () => clearTimeout(timer)
   }, [target])
