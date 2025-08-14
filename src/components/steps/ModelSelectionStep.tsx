@@ -27,7 +27,7 @@ export default function ModelSelectionStep({
   return (
     <div className="max-w-4xl mx-auto">
       <motion.div
-        className="jobhatch-card"
+        className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}

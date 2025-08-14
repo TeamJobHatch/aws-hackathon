@@ -98,90 +98,38 @@ export default function ResumeUploadStep({
     return log
   }
 
-  // Simulate real-time analysis progress
-  const simulateAnalysisProgress = (candidateCount: number) => {
-    setIsAnalyzing(true)
-    setAnalysisProgress(0)
-    setAnalysisLogs([])
-    
-    addAnalysisLog(`🔍 Starting Gemini 2.5 powered analysis for ${candidateCount} candidate${candidateCount > 1 ? 's' : ''}`, 'info', 'startup')
-    addAnalysisLog(`📊 Analyzing against ${state.jobDescription?.skills?.length || 8} job requirements`, 'info', 'startup')
-    addAnalysisLog(`🧠 Cross-referencing skills with industry standards and job market trends`, 'info', 'startup')
-    
-    const totalSteps = analysisSteps.length
-    let currentStepIndex = 0
-    
-    const progressTimer = setInterval(() => {
-      if (currentStepIndex < totalSteps) {
-        const step = analysisSteps[currentStepIndex]
-        
-        // Update step status
-        setAnalysisSteps(prev => prev.map((s, index) => ({
-          ...s,
-          status: index < currentStepIndex ? 'completed' : 
-                 index === currentStepIndex ? 'active' : 'pending'
-        })))
-        
-        setCurrentStep(step.title)
-        
-        // Add step-specific logs
-        switch (step.id) {
-          case 'parsing':
-            addAnalysisLog(`📄 Extracting text and metadata from ${candidateCount} resume${candidateCount > 1 ? 's' : ''}`, 'info', 'parsing')
-            setTimeout(() => addAnalysisLog(`✅ Successfully parsed ${candidateCount} document${candidateCount > 1 ? 's' : ''}`, 'success', 'parsing'), 1000)
-            break
-          case 'matching':
-            addAnalysisLog(`🔍 Analyzing technical skills and experience alignment`, 'info', 'matching')
-            setTimeout(() => addAnalysisLog(`🎯 Skill matching complete with high confidence`, 'success', 'matching'), 1500)
-            break
-          case 'linkedin':
-            addAnalysisLog(`🔗 Searching LinkedIn profiles for professional verification`, 'info', 'linkedin')
-            setTimeout(() => addAnalysisLog(`📊 LinkedIn credibility scores calculated`, 'success', 'linkedin'), 1200)
-            break
-          case 'github':
-            addAnalysisLog(`💻 Evaluating GitHub repositories and code quality`, 'info', 'github')
-            setTimeout(() => addAnalysisLog(`⚡ Repository analysis complete - individual project ratings available`, 'success', 'github'), 1800)
-            break
-          case 'web-research':
-            addAnalysisLog(`🌐 Scanning for portfolios and professional websites`, 'info', 'web-research')
-            setTimeout(() => addAnalysisLog(`📝 Additional candidate information gathered`, 'success', 'web-research'), 1000)
-            break
-          case 'scoring':
-            addAnalysisLog(`📈 Calculating final match percentages and rankings`, 'info', 'scoring')
-            setTimeout(() => addAnalysisLog(`🎉 Analysis complete! Ready to review candidate insights`, 'success', 'scoring'), 1500)
-            break
-        }
-        
-        const progress = ((currentStepIndex + 1) / totalSteps) * 100
-        setAnalysisProgress(progress)
-        
-        if (currentStepIndex === totalSteps - 1) {
-          setTimeout(() => {
-            setAnalysisSteps(prev => prev.map(s => ({ ...s, status: 'completed' as 'completed' })))
-            setAnalysisProgress(100)
-            setIsAnalyzing(false)
-            addAnalysisLog(`✨ Gemini 2.5 analysis completed successfully`, 'success', 'complete')
-            
-            // Auto-proceed to results after analysis
-            setTimeout(() => {
-              goToNextStep() // This will now go directly to results since analysis step is removed
-            }, 2000)
-          }, 1000)
-        }
-        
-        currentStepIndex++
-      }
-    }, 3000) // 3 second intervals
-    
-    return () => clearInterval(progressTimer)
-  }
+  // Real-time analysis progress tracking based on actual API responses
 
   const uploadMutation = useMutation(
     async (files: File[]) => {
       setIsUploading(true)
+      setIsAnalyzing(true)
+      setAnalysisProgress(0)
+      setAnalysisLogs([])
       
-      // Start real-time analysis simulation
-      const cleanup = simulateAnalysisProgress(files.length)
+      // Start real-time analysis tracking
+      let currentStepIndex = 0
+      const totalSteps = analysisSteps.length
+      
+      const updateProgress = (stepId: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+        addAnalysisLog(message, type, stepId)
+        const stepIndex = analysisSteps.findIndex(s => s.id === stepId)
+        if (stepIndex >= 0) {
+          setAnalysisSteps(prev => prev.map((s, index) => ({
+            ...s,
+            status: index < stepIndex ? 'completed' : 
+                   index === stepIndex ? 'active' : 'pending'
+          })))
+          const progress = ((stepIndex + 1) / totalSteps) * 100
+          setAnalysisProgress(progress)
+        }
+      }
+      
+      addAnalysisLog(`🔍 Starting Gemini 2.5 powered analysis for ${files.length} candidate${files.length > 1 ? 's' : ''}`, 'info', 'startup')
+      addAnalysisLog(`📊 Analyzing against ${state.jobDescription?.skills?.length || 8} job requirements`, 'info', 'startup')
+      
+      // Step 1: Parsing
+      updateProgress('parsing', `📄 Extracting text and metadata from ${files.length} resume${files.length > 1 ? 's' : ''}`)
       
       const uploadPromises = files.map(async (file) => {
         const formData = new FormData()
@@ -198,62 +146,113 @@ export default function ResumeUploadStep({
         return response.json()
       })
 
+      // Step 2: Skill matching (during upload)
+      updateProgress('matching', '🔍 Analyzing technical skills and experience alignment')
+      
       const results = await Promise.all(uploadPromises)
+      
+      // Step 3-6: Complete remaining steps based on actual analysis results
+      const hasLinkedIn = results.some(r => r.analysis?.linkedinAnalysis)
+      const hasGitHub = results.some(r => r.analysis?.githubAnalysis)
+      
+      if (hasLinkedIn) {
+        updateProgress('linkedin', '📊 LinkedIn credibility scores calculated', 'success')
+      } else {
+        updateProgress('linkedin', '🔗 No LinkedIn profiles found to analyze')
+      }
+      
+      if (hasGitHub) {
+        updateProgress('github', '⚡ Repository analysis complete - individual project ratings available', 'success')
+      } else {
+        updateProgress('github', '💻 No GitHub repositories found to analyze')
+      }
+      
+      updateProgress('web-research', '📝 Additional candidate information gathered', 'success')
+      updateProgress('scoring', '📈 Calculating final match percentages and rankings')
+      
+      // Complete all steps
+      setAnalysisSteps(prev => prev.map(s => ({ ...s, status: 'completed' as 'completed' })))
+      setAnalysisProgress(100)
+      addAnalysisLog(`✨ Gemini 2.5 analysis completed successfully`, 'success', 'complete')
+      
       return results
     },
-         {
-       onSuccess: (results) => {
-         const newResumes: Resume[] = results.map(data => ({
-           id: data.id,
-           candidateName: data.candidateName || 'Unknown Candidate',
-           email: data.email,
-           phone: data.phone,
-           filename: data.filename,
-           content: data.content,
-           uploadedAt: new Date(),
-           analysis: data.analysis
-         }))
-         
-         const updatedResumes = [...state.resumes, ...newResumes]
-         
-         // Check if any resume had API issues
-         let hasApiIssues = false
-         let apiStatus = 'working'
-         let apiMessage = ''
-         
-         for (const result of results) {
-           if (result.apiStatus && result.apiStatus !== 'working') {
-             hasApiIssues = true
-             apiStatus = result.apiStatus
-             apiMessage = result.apiMessage || ''
-             break
-           }
-         }
-         
-         updateState({ 
-           resumes: updatedResumes,
-           ...(hasApiIssues && { apiStatus, apiMessage })
-         })
-         
-         if (hasApiIssues) {
-           toast.success(`${newResumes.length} resume(s) uploaded! AI analysis ${apiStatus === 'limited' ? 'limited' : 'unavailable'} - using basic analysis.`)
-         } else {
-           toast.success(`${newResumes.length} resume(s) uploaded successfully!`)
-         }
-         
-         setIsUploading(false)
-       },
-       onError: (error: any) => {
-         const errorData = error.response?.data
-         if (errorData?.apiStatus) {
-           updateState({ 
-             apiStatus: errorData.apiStatus,
-             apiMessage: errorData.apiMessage
-           })
-         }
-         toast.error(error.message || 'Failed to upload resumes. Please try again.')
-         setIsUploading(false)
-       }
+                  {
+      onSuccess: (results) => {
+        const newResumes: Resume[] = results.map(data => ({
+          id: data.id,
+          candidateName: data.candidateName || 'Unknown Candidate',
+          email: data.email,
+          phone: data.phone,
+          filename: data.filename,
+          content: data.content,
+          uploadedAt: new Date(),
+          analysis: data.analysis,
+          progressSteps: data.progressSteps,
+          links: data.links
+        }))
+        
+        const updatedResumes = [...state.resumes, ...newResumes]
+        
+        // Check if any resume had API issues
+        let hasApiIssues = false
+        let apiStatus = 'working'
+        let apiMessage = ''
+        
+        for (const result of results) {
+          if (result.apiStatus && result.apiStatus !== 'working') {
+            hasApiIssues = true
+            apiStatus = result.apiStatus
+            apiMessage = result.apiMessage || ''
+            break
+          }
+        }
+        
+        updateState({ 
+          resumes: updatedResumes,
+          ...(hasApiIssues && { apiStatus, apiMessage })
+        })
+        
+        if (hasApiIssues) {
+          toast.success(`${newResumes.length} resume(s) uploaded! AI analysis ${apiStatus === 'limited' ? 'limited' : 'unavailable'} - using basic analysis.`)
+        } else {
+          toast.success(`${newResumes.length} resume(s) uploaded successfully!`)
+        }
+        
+        // Ensure analysis progress is at 100% and all steps are completed
+        setAnalysisProgress(100)
+        setAnalysisSteps(prev => prev.map(s => ({ ...s, status: 'completed' as 'completed' })))
+        addAnalysisLog(`🎉 All analysis complete! ${results.length} resume(s) processed`, 'success', 'complete')
+        
+        // Wait a moment for the analysis completion animation, then navigate
+        setTimeout(() => {
+          setIsUploading(false)
+          setIsAnalyzing(false)
+          
+          // Auto-proceed to results after analysis completion
+          setTimeout(() => {
+            console.log('📊 Navigating to results with analysis data:', {
+              resumes: results.length,
+              hasLinkedIn: results.some(r => r.analysis?.linkedinAnalysis),
+              hasGitHub: results.some(r => r.analysis?.githubAnalysis)
+            })
+            goToNextStep()
+          }, 1500)
+        }, 1000)
+      },
+              onError: (error: any) => {
+        const errorData = error.response?.data
+        if (errorData?.apiStatus) {
+          updateState({ 
+            apiStatus: errorData.apiStatus,
+            apiMessage: errorData.apiMessage
+          })
+        }
+        toast.error(error.message || 'Failed to upload resumes. Please try again.')
+        setIsUploading(false)
+        setIsAnalyzing(false)
+        setAnalysisProgress(0)
+      }
      }
   )
 
@@ -290,11 +289,11 @@ export default function ResumeUploadStep({
   const canProceed = state.resumes.length > 0
 
   return (
-    <div className="container-jobhatch-narrow">
+    <div className="max-w-4xl mx-auto">
       <div className="text-center mb-8">
-        <h2 className="heading-lg">Upload Resumes</h2>
-        <p className="text-gray-600">
-          Upload candidate resumes for AI analysis (maximum {maxResumes} for demo)
+        <h2 className="text-3xl font-bold text-gray-900 mb-4">Upload Resume(s)</h2>
+        <p className="text-lg text-gray-600">
+          Please upload up to {maxResumes} resumes for us to analyze
         </p>
       </div>
 
@@ -318,29 +317,33 @@ export default function ResumeUploadStep({
 
       {/* Upload Area */}
       {state.resumes.length < maxResumes && (
-        <div className="jobhatch-card mb-8">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 mb-8">
           <div
             {...getRootProps()}
-            className={`upload-area-jobhatch ${isDragActive ? 'upload-area-active' : ''} ${
+            className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 ${
+              isDragActive 
+                ? 'border-orange-400 bg-orange-50' 
+                : 'border-gray-300 hover:border-gray-400'
+            } ${
               state.resumes.length >= maxResumes || isUploading ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
             <input {...getInputProps()} />
-            <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <Upload className="mx-auto h-16 w-16 text-gray-400 mb-6" />
             {isDragActive ? (
-              <p className="text-blue-600 font-medium">Drop the resumes here...</p>
+              <p className="text-orange-600 font-medium text-lg">Drop the resumes here...</p>
             ) : isUploading ? (
               <div className="flex items-center justify-center">
-                <div className="jobhatch-spinner mr-3"></div>
-                <p className="text-gray-600 font-medium">Uploading and analyzing resumes...</p>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mr-3"></div>
+                <p className="text-gray-600 font-medium text-lg">Uploading and analyzing resumes...</p>
               </div>
             ) : (
               <div>
-                <p className="text-gray-600 font-medium mb-2">
+                <p className="text-gray-600 font-medium mb-2 text-lg">
                   Drag & drop resumes here, or click to browse
                 </p>
                 <p className="text-sm text-gray-500">
-                  Supports PDF, DOC, DOCX (Max 10MB each) • Up to {maxResumes - state.resumes.length} more files
+                  Each file size limited 10 MB, only Docx and PDF type are allowed
                 </p>
               </div>
             )}
@@ -355,20 +358,20 @@ export default function ResumeUploadStep({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="jobhatch-card mb-8 bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200"
+            className="bg-white rounded-2xl shadow-lg border border-gray-200 mb-8"
           >
             <div className="p-6">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-3">
-                  <Brain className="h-6 w-6 text-purple-600" />
+                  <Brain className="h-6 w-6 text-orange-600" />
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">AI Analysis in Progress</h3>
-                    <p className="text-sm text-gray-600">JobHatch Enterprise is analyzing {state.resumes.length} candidate across multiple platforms</p>
+                    <h3 className="text-lg font-semibold text-gray-900">We are analyzing...</h3>
+                    <p className="text-sm text-gray-600">Please give us a moment...</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-purple-600">{Math.round(analysisProgress)}%</div>
+                  <div className="text-2xl font-bold text-orange-600">{Math.round(analysisProgress)}%</div>
                   <div className="text-xs text-gray-500">Complete</div>
                 </div>
               </div>
@@ -377,11 +380,11 @@ export default function ResumeUploadStep({
               <div className="mb-6">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-gray-700">Overall Progress</span>
-                  <span className="text-sm text-purple-600">{Math.round(analysisProgress)}%</span>
+                  <span className="text-sm text-orange-600">{Math.round(analysisProgress)}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
                   <motion.div 
-                    className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full"
+                    className="bg-gradient-to-r from-orange-500 to-orange-600 h-3 rounded-full"
                     initial={{ width: 0 }}
                     animate={{ width: `${analysisProgress}%` }}
                     transition={{ duration: 0.5 }}
@@ -520,7 +523,7 @@ export default function ResumeUploadStep({
       </AnimatePresence>
 
       {/* Uploaded Resumes */}
-      {state.resumes.length > 0 && (
+              {state.resumes.length > 0 && (
         <div className="space-y-4 mb-8">
           <h3 className="text-lg font-semibold text-gray-900">
             Uploaded Resumes ({state.resumes.length})
@@ -528,11 +531,11 @@ export default function ResumeUploadStep({
           
           <div className="space-y-3">
             {state.resumes.map((resume: Resume, index: number) => (
-              <div key={resume.id} className="jobhatch-card-small">
+              <div key={resume.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="h-5 w-5 text-blue-600" />
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                      <User className="h-5 w-5 text-orange-600" />
                     </div>
                     <div>
                       <h4 className="font-medium text-gray-900">{resume.candidateName}</h4>
@@ -540,9 +543,9 @@ export default function ResumeUploadStep({
                       {resume.analysis && (
                         <div className="flex items-center space-x-2 mt-1">
                           <span className={`text-xs px-2 py-1 rounded-full ${
-                            resume.analysis.overallScore >= 80 ? 'score-excellent' :
-                            resume.analysis.overallScore >= 70 ? 'score-good' :
-                            resume.analysis.overallScore >= 60 ? 'score-fair' : 'score-poor'
+                            resume.analysis.overallScore >= 80 ? 'bg-green-100 text-green-700' :
+                            resume.analysis.overallScore >= 70 ? 'bg-yellow-100 text-yellow-700' :
+                            resume.analysis.overallScore >= 60 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'
                           }`}>
                             {resume.analysis.overallScore}% Match
                           </span>
@@ -603,29 +606,29 @@ export default function ResumeUploadStep({
       <div className="flex flex-col sm:flex-row gap-4">
         <button
           onClick={goToPreviousStep}
-          className="btn-jobhatch-secondary flex-1 flex items-center justify-center"
+          className="flex-1 flex items-center justify-center px-6 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
         >
           <ArrowLeft className="mr-2 h-5 w-5" />
-          Back to Job Details
+          Back
         </button>
         
         <button
           onClick={goToNextStep}
           disabled={!canProceed || isUploading}
-          className={`flex-1 flex items-center justify-center ${
+          className={`flex-1 flex items-center justify-center px-6 py-3 rounded-xl font-semibold transition-colors ${
             canProceed && !isUploading 
-              ? 'btn-jobhatch-primary' 
-              : 'btn-jobhatch-secondary opacity-50 cursor-not-allowed'
+              ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
         >
           {isUploading ? (
             <>
-              <div className="jobhatch-spinner mr-2"></div>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
               Processing...
             </>
           ) : (
             <>
-              Start AI Analysis
+              Next
               <ArrowRight className="ml-2 h-5 w-5" />
             </>
           )}

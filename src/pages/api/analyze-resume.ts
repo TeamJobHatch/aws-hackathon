@@ -217,12 +217,27 @@ async function fallbackLinkExtraction(resumeText: string): Promise<{ github?: st
   // Process other URLs
   for (const url of urls) {
     const lowerUrl = url.toLowerCase()
-    if ((lowerUrl.includes('portfolio') || lowerUrl.includes('.dev') || lowerUrl.includes('.me')) && !links.portfolio) {
+    if ((lowerUrl.includes('portfolio') || lowerUrl.includes('.dev') || lowerUrl.includes('.me') || lowerUrl.includes('vercel.app') || lowerUrl.includes('netlify.app')) && !links.portfolio) {
       links.portfolio = url
       console.log('Fallback extracted Portfolio:', links.portfolio)
-    } else if (!links.website && !lowerUrl.includes('github.com') && !lowerUrl.includes('linkedin.com')) {
-      links.website = url
-      console.log('Fallback extracted Website:', links.website)
+    } else if (!lowerUrl.includes('github.com') && !lowerUrl.includes('linkedin.com') && !lowerUrl.includes('@')) {
+      // Categorize other professional URLs
+      if (lowerUrl.includes('google.com') || lowerUrl.includes('drive.google.com') || lowerUrl.includes('sites.google.com')) {
+        links.other.push({ url, type: 'google_site' })
+        console.log('Fallback extracted Google Site:', url)
+      } else if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) {
+        links.other.push({ url, type: 'video' })
+        console.log('Fallback extracted Video:', url)
+      } else if (lowerUrl.includes('medium.com') || lowerUrl.includes('dev.to') || lowerUrl.includes('hashnode') || lowerUrl.includes('blog')) {
+        links.other.push({ url, type: 'blog' })
+        console.log('Fallback extracted Blog:', url)
+      } else if (!links.website) {
+        links.website = url
+        console.log('Fallback extracted Website:', links.website)
+      } else {
+        links.other.push({ url, type: 'website' })
+        console.log('Fallback extracted Other URL:', url)
+      }
     }
   }
 
@@ -376,23 +391,83 @@ FOCUS ON: github.com links, linkedin.com/in links, portfolio sites, personal web
   }
 }
 
-async function generateEnhancedAnalysis(resumeText: string, jobDescription: JobDescription): Promise<ResumeAnalysis> {
+async function generateEnhancedAnalysis(
+  resumeText: string, 
+  jobDescription: JobDescription, 
+  githubData?: any, 
+  linkedinData?: any
+): Promise<ResumeAnalysis> {
   // Check if OpenAI API key is available
   if (!process.env.OPENAI_API_KEY) {
     console.error('OpenAI API key not configured')
     throw new Error('AI analysis service not configured')
   }
 
+  // Build additional context from platform data
+  let platformContext = ''
+  
+  if (githubData && githubData.success && githubData.analysis) {
+    const gh = githubData.analysis
+    platformContext += `\n\nGITHUB ANALYSIS DATA:
+- Username: ${gh.username}
+- Public Repos: ${gh.profile?.public_repos || 0}
+- Followers: ${gh.profile?.followers || 0}
+- Technical Score: ${gh.technical_score}%
+- Activity Score: ${gh.activity_score}%
+- Authenticity Score: ${gh.authenticity_score}%
+- Projects Analyzed: ${gh.repository_analysis?.length || 0}
+- Resume Matched Projects: ${gh.overall_metrics?.resume_matched_repos || 0}
+- Red Flags: ${gh.red_flags?.length || 0} (${gh.red_flags?.slice(0, 3).join('; ') || 'None'})
+- Technologies Found: ${gh.repository_analysis?.flatMap((r: any) => r.technologies_detected || []).slice(0, 15).join(', ') || 'None'}
+- Code Quality Average: ${gh.overall_metrics?.average_code_quality || 0}%
+- Hiring Verdict: ${gh.hiring_verdict?.recommendation || 'Unknown'} (${gh.hiring_verdict?.confidence || 0}% confidence)
+
+PROJECT DETAILS:
+${gh.repository_analysis?.slice(0, 5).map((repo: any) => 
+  `• ${repo.name}: Quality=${repo.code_quality?.overall_score || 0}%, AI Usage=${repo.code_quality?.ai_usage_percentage || 0}%, ${repo.resume_mentioned ? 'Resume Match ✓' : 'No Resume Match'}, Tech: ${repo.technologies_detected?.slice(0, 3).join(', ') || 'None'}`
+).join('\n') || 'No projects analyzed'}`
+  }
+  
+  if (linkedinData && linkedinData.analysis) {
+    const li = linkedinData.analysis
+    platformContext += `\n\nLINKEDIN ANALYSIS DATA:
+- Profile Name: ${li.profile_data?.name || 'N/A'}
+- Current Title: ${li.profile_data?.title || 'N/A'}
+- Company: ${li.profile_data?.company || 'N/A'}
+- Location: ${li.profile_data?.location || 'N/A'}
+- Connections: ${li.profile_data?.connections || 0}+
+- Experience Entries: ${li.profile_data?.experience?.length || 0}
+- Education Entries: ${li.profile_data?.education?.length || 0}
+- Skills Listed: ${li.profile_data?.skills?.length || 0} (${li.profile_data?.skills?.slice(0, 10).join(', ') || 'None'})
+- Languages: ${li.profile_data?.languages?.join(', ') || 'Not specified'}
+- Honesty Score: ${li.honesty_score}%
+- Profile Completeness: ${li.profile_completeness}%
+- Inconsistencies: ${li.inconsistencies?.length || 0} found
+- Professional Score: ${li.professional_score}%
+
+EXPERIENCE DETAILS:
+${li.profile_data?.experience?.slice(0, 3).map((exp: any) => 
+  `• ${exp.title} at ${exp.company} (${exp.duration}) - ${exp.description?.substring(0, 100) || 'No description'}...`
+).join('\n') || 'No experience data'}
+
+EDUCATION DETAILS:
+${li.profile_data?.education?.map((edu: any) => 
+  `• ${edu.degree} in ${edu.field} from ${edu.institution} (${edu.startYear}-${edu.endYear})`
+).join('\n') || 'No education data'}`
+  }
+
   const prompt = `
-You are an expert HR analyst. Analyze this resume against the job description and provide a detailed assessment.
+You are an expert HR analyst. Analyze this candidate comprehensively using ALL available data sources and provide a detailed assessment.
 
 Job Title: ${jobDescription.title}
 Company: ${jobDescription.company}
 Job Requirements: ${jobDescription.requirements.join(', ')}
 Job Skills: ${jobDescription.skills.join(', ')}
 
-Resume Content:
-${resumeText.substring(0, 4000)}
+RESUME CONTENT:
+${resumeText.substring(0, 3000)}
+
+${platformContext}
 
 Provide a comprehensive analysis in this exact JSON format:
 {
@@ -423,12 +498,17 @@ Provide a comprehensive analysis in this exact JSON format:
 }
 
 Instructions:
-- Be thorough in identifying technical skills from the resume content
-- Include both hard and soft skills demonstrated through experience
-- Provide specific evidence for skill matches when possible
+- Use ALL available data sources (resume, GitHub, LinkedIn) for comprehensive analysis
+- Cross-reference information between platforms to verify claims and identify inconsistencies
+- Factor in GitHub technical scores, project quality, and authenticity when assessing technical abilities
+- Consider LinkedIn profile completeness and professional presentation in overall evaluation
+- Weight platform-verified skills and experience higher than resume-only claims
+- Include platform-specific red flags or positive indicators in your assessment
+- Be thorough in identifying technical skills from ALL sources (resume, GitHub repos, LinkedIn)
+- Provide specific evidence for skill matches when possible, citing the source (resume/GitHub/LinkedIn)
 - Give detailed insights about the candidate's career progression, project impact, and professional growth
-- Consider leadership experience, collaboration, and problem-solving abilities
-- Assess cultural fit and potential for the specific role and company
+- Consider leadership experience, collaboration, and problem-solving abilities across all platforms
+- Assess cultural fit and potential for the specific role and company based on complete profile
 
 Return only the JSON object, no other text.`
 
@@ -491,9 +571,44 @@ Return only the JSON object, no other text.`
   }
 }
 
+// Progress tracking for real-time updates
+interface ProgressStep {
+  id: string
+  message: string
+  timestamp: number
+  status: 'processing' | 'completed' | 'error'
+  type?: 'linkedin' | 'github' | 'resume' | 'general'
+  data?: any
+}
+
+function createProgressStep(
+  id: string, 
+  message: string, 
+  status: 'processing' | 'completed' | 'error', 
+  type?: 'linkedin' | 'github' | 'resume' | 'general',
+  data?: any
+): ProgressStep {
+  return {
+    id,
+    message,
+    timestamp: Date.now(),
+    status,
+    type,
+    data
+  }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  // Initialize progress tracking
+  const progressSteps: ProgressStep[] = []
+  
+  function addProgress(step: ProgressStep) {
+    progressSteps.push(step)
+    console.log(`📊 Progress: ${step.message}`)
   }
 
   try {
@@ -514,30 +629,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const jobDescription = JSON.parse(jobDescriptionStr)
 
     // Extract text from uploaded resume
+    addProgress(createProgressStep('resume_extract', '📄 Extracting text from resume...', 'processing', 'resume'))
     const resumeText = await extractTextFromFile(file)
     
     // Check if text extraction was successful
     if (!resumeText || resumeText.trim().length < 50) {
+      addProgress(createProgressStep('resume_extract', '❌ Failed to extract sufficient text from resume', 'error', 'resume'))
       return res.status(400).json({ 
         error: 'Unable to extract sufficient text from resume. Please check the file format.',
-        apiStatus: 'error'
+        apiStatus: 'error',
+        progressSteps
       })
     }
 
+    addProgress(createProgressStep('resume_extract', '✅ Resume text extracted successfully', 'completed', 'resume'))
+
     // Extract candidate info and links
+    addProgress(createProgressStep('link_extract', '🔍 Extracting candidate profile links...', 'processing', 'general'))
     const candidateInfo = extractCandidateInfo(resumeText)
     console.log('Resume text length:', resumeText.length)
     console.log('Resume text preview:', resumeText.substring(0, 500))
     
     const candidateLinks = await extractCandidateLinksWithAI(resumeText)
     console.log('Extracted candidate links:', JSON.stringify(candidateLinks, null, 2))
+    
+    addProgress(createProgressStep('link_extract', `✅ Found ${Object.keys(candidateLinks).filter(key => candidateLinks[key as keyof typeof candidateLinks]).length} profile links`, 'completed', 'general', candidateLinks))
 
-    // Use the enhanced AI analysis function
-    let analysis = await generateEnhancedAnalysis(resumeText, jobDescription)
+    // Collect platform data first
+    let githubData = null
+    let linkedinData = null
 
     // Analyze GitHub profile if found
     if (candidateLinks.github) {
       try {
+        addProgress(createProgressStep('github_start', '💻 Starting GitHub profile analysis...', 'processing', 'github'))
         const githubUsername = candidateLinks.github.split('/').pop()
                   console.log('Extracted GitHub username from URL:', githubUsername, 'from URL:', candidateLinks.github)
           
@@ -551,6 +676,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               /^[a-zA-Z0-9-_]+$/.test(githubUsername)) {
             
             console.log('💻 Starting deep GitHub analysis for:', githubUsername)
+            addProgress(createProgressStep('github_analyze', `🔍 Analyzing GitHub repositories for ${githubUsername}...`, 'processing', 'github'))
             
             // Construct the correct URL for both Vercel and local development
             const baseUrl = process.env.VERCEL_URL 
@@ -567,47 +693,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 jobSkills: jobDescription.skills,
                 resumeText: resumeText
               }),
-              // Add timeout for Vercel
-              signal: AbortSignal.timeout(25000)
+              // Increase timeout for comprehensive analysis with Gemini 2.5 Flash
+              signal: AbortSignal.timeout(60000)
             })
 
                       if (githubResponse.ok) {
-              const githubData = await githubResponse.json()
+              githubData = await githubResponse.json()
+              console.log('🔍 Raw GitHub response structure:', {
+                success: githubData.success,
+                hasAnalysis: !!githubData.analysis,
+                analysisKeys: githubData.analysis ? Object.keys(githubData.analysis) : []
+              })
+              
               if (githubData.success && githubData.analysis) {
-                analysis.githubAnalysis = githubData.analysis
                 console.log('✅ GitHub deep analysis completed for:', githubUsername)
-                console.log('📊 GitHub metrics:', {
+                const metrics = {
                   technical: githubData.analysis.technical_score,
                   activity: githubData.analysis.activity_score,
+                  authenticity: githubData.analysis.authenticity_score,
                   projects: githubData.analysis.repository_analysis?.length || 0,
                   resumeMatches: githubData.analysis.overall_metrics?.resume_matched_repos || 0,
-                  redFlags: githubData.analysis.red_flags?.length || 0
-                })
-              } else {
-                console.log('❌ GitHub analysis response invalid:', githubData)
+                  redFlags: githubData.analysis.red_flags?.length || 0,
+                  verdict: githubData.analysis.hiring_verdict?.recommendation
+                }
+                console.log('📊 GitHub metrics:', metrics)
+                console.log('📋 GitHub analysis will be included in final response')
                 
-                // Add fallback GitHub analysis
-                analysis.githubAnalysis = createFallbackGitHubAnalysis(candidateLinks.github, githubUsername, resumeText)
+                addProgress(createProgressStep('github_analyze', `✅ GitHub analysis complete: ${metrics.projects} projects analyzed, ${metrics.technical}% technical score`, 'completed', 'github', metrics))
+              } else {
+                console.log('❌ GitHub analysis response invalid:', {
+                  success: githubData.success,
+                  hasAnalysis: !!githubData.analysis,
+                  errorDetails: githubData.error || 'No error message'
+                })
+                addProgress(createProgressStep('github_analyze', '❌ GitHub analysis failed: Invalid response', 'error', 'github'))
+                githubData = null
               }
             } else {
               console.log('❌ GitHub analysis failed with status:', githubResponse.status)
               const errorText = await githubResponse.text()
               console.log('GitHub error response:', errorText)
-              
-              // Add fallback GitHub analysis
-              analysis.githubAnalysis = createFallbackGitHubAnalysis(candidateLinks.github, githubUsername, resumeText)
+              addProgress(createProgressStep('github_analyze', '❌ GitHub analysis failed: API error', 'error', 'github'))
+              githubData = null
             }
         } else {
           console.log('Invalid GitHub username detected, skipping analysis:', githubUsername)
         }
       } catch (error) {
         console.log('GitHub analysis failed:', error)
-        
-        // Add fallback GitHub analysis
-        const githubUsername = candidateLinks.github.split('/').pop()
-        if (githubUsername) {
-          analysis.githubAnalysis = createFallbackGitHubAnalysis(candidateLinks.github, githubUsername, resumeText)
-        }
+        addProgress(createProgressStep('github_analyze', `❌ GitHub analysis error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error', 'github'))
+        githubData = null
       }
     } else {
       console.log('No GitHub URL found in candidate links')
@@ -616,6 +751,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Analyze LinkedIn profile if found with chain of thought
     if (candidateLinks.linkedin) {
       try {
+        addProgress(createProgressStep('linkedin_start', '👤 Starting LinkedIn profile analysis...', 'processing', 'linkedin'))
         console.log('🔍 Starting LinkedIn profile analysis:', candidateLinks.linkedin)
         
         // Construct the correct URL for both Vercel and local development
@@ -632,36 +768,88 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             linkedInUrl: candidateLinks.linkedin,
             resumeText: resumeText
           }),
-          // Add timeout for Vercel
-          signal: AbortSignal.timeout(25000)
+          // Increase timeout for comprehensive analysis
+          signal: AbortSignal.timeout(45000)
         })
 
         if (linkedinResponse.ok) {
-          const linkedinData = await linkedinResponse.json()
-          analysis.linkedinAnalysis = linkedinData.analysis
-          console.log('✅ LinkedIn analysis completed successfully')
-          console.log('📊 LinkedIn scores:', {
-            honesty: linkedinData.analysis.honesty_score,
-            completeness: linkedinData.analysis.profile_completeness,
-            professional: linkedinData.analysis.professional_score
+          linkedinData = await linkedinResponse.json()
+          console.log('🔍 Raw LinkedIn response structure:', {
+            success: linkedinData.success,
+            hasAnalysis: !!linkedinData.analysis,
+            analysisKeys: linkedinData.analysis ? Object.keys(linkedinData.analysis) : []
           })
-          console.log('⚠️ Inconsistencies found:', linkedinData.analysis.inconsistencies.length)
+          
+          console.log('✅ LinkedIn analysis completed successfully')
+          if (linkedinData.analysis) {
+            const scores = {
+              honesty: linkedinData.analysis.honesty_score,
+              completeness: linkedinData.analysis.profile_completeness,
+              professional: linkedinData.analysis.professional_score,
+              inconsistencies: linkedinData.analysis.inconsistencies?.length || 0
+            }
+            console.log('📊 LinkedIn scores:', scores)
+            console.log('⚠️ Inconsistencies found:', scores.inconsistencies)
+            console.log('📋 LinkedIn analysis will be included in final response')
+            
+            addProgress(createProgressStep('linkedin_analyze', `✅ LinkedIn analysis complete: ${scores.honesty}% credibility, ${scores.inconsistencies} issues found`, 'completed', 'linkedin', scores))
+          }
         } else {
           console.log('❌ LinkedIn analysis failed with status:', linkedinResponse.status)
           const errorText = await linkedinResponse.text()
           console.log('LinkedIn error response:', errorText)
-          
-          // Add fallback LinkedIn analysis
-          analysis.linkedinAnalysis = createFallbackLinkedInAnalysis(candidateLinks.linkedin, resumeText)
+          addProgress(createProgressStep('linkedin_analyze', '❌ LinkedIn analysis failed: API error', 'error', 'linkedin'))
+          linkedinData = null
         }
       } catch (error) {
         console.log('❌ LinkedIn analysis failed with error:', error)
-        
-        // Add fallback LinkedIn analysis
-        analysis.linkedinAnalysis = createFallbackLinkedInAnalysis(candidateLinks.linkedin, resumeText)
+        addProgress(createProgressStep('linkedin_analyze', `❌ LinkedIn analysis error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error', 'linkedin'))
+        linkedinData = null
       }
     } else {
       console.log('ℹ️ No LinkedIn URL found for profile analysis')
+    }
+
+    // Now perform comprehensive analysis with all platform data
+    addProgress(createProgressStep('final_analysis', '🤖 Performing comprehensive AI analysis...', 'processing', 'general'))
+    console.log('🤖 Starting comprehensive AI analysis with platform data...')
+    let analysis = await generateEnhancedAnalysis(resumeText, jobDescription, githubData, linkedinData)
+    addProgress(createProgressStep('final_analysis', `✅ Analysis complete: ${analysis.overallScore}% overall score`, 'completed', 'general', { score: analysis.overallScore }))
+
+    // Add platform-specific analysis results for frontend display
+    if (githubData && githubData.success && githubData.analysis) {
+      analysis.githubAnalysis = githubData.analysis
+      console.log('✅ GitHub analysis data included in response:', {
+        username: githubData.analysis.username,
+        technical_score: githubData.analysis.technical_score,
+        projects: githubData.analysis.repository_analysis?.length || 0,
+        verdict: githubData.analysis.hiring_verdict?.recommendation
+      })
+    } else if (candidateLinks.github) {
+      const githubUsername = candidateLinks.github.split('/').pop()
+      if (githubUsername) {
+        analysis.githubAnalysis = createFallbackGitHubAnalysis(candidateLinks.github, githubUsername, resumeText)
+        console.log('📝 GitHub fallback analysis created:', {
+          username: githubUsername,
+          reason: githubData ? 'Analysis failed' : 'No data received'
+        })
+      }
+    }
+
+    if (linkedinData && linkedinData.analysis) {
+      analysis.linkedinAnalysis = linkedinData.analysis
+      console.log('✅ LinkedIn analysis data included in response:', {
+        profile_url: linkedinData.analysis.profile_url,
+        honesty_score: linkedinData.analysis.honesty_score,
+        completeness: linkedinData.analysis.profile_completeness,
+        experience_count: linkedinData.analysis.profile_data?.experience?.length || 0
+      })
+    } else if (candidateLinks.linkedin) {
+      analysis.linkedinAnalysis = createFallbackLinkedInAnalysis(candidateLinks.linkedin, resumeText)
+      console.log('📝 LinkedIn fallback analysis created:', {
+        profile_url: candidateLinks.linkedin,
+        reason: linkedinData ? 'Analysis failed' : 'No data received'
+      })
     }
 
     const response = {
@@ -673,7 +861,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       content: resumeText.substring(0, 1000) + (resumeText.length > 1000 ? '...' : ''),
       analysis,
       links: candidateLinks,
-      apiStatus: 'working'
+      apiStatus: 'working',
+      progressSteps
     }
 
     console.log('Final response being sent:', JSON.stringify({

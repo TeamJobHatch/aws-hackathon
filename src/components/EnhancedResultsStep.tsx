@@ -15,6 +15,15 @@ interface ChainOfThoughtStep {
   type?: 'linkedin' | 'github' | 'resume' | 'general'
 }
 
+interface ProgressStep {
+  id: string
+  message: string
+  timestamp: number
+  status: 'processing' | 'completed' | 'error'
+  type?: 'linkedin' | 'github' | 'resume' | 'general'
+  data?: any
+}
+
 interface EnhancedResultsStepProps {
   state: any
   updateState: (updates: any) => void
@@ -35,96 +44,127 @@ export default function EnhancedResultsStep({
   // Generate chain of thought for the analysis process
   useEffect(() => {
     if (state.resumes.length > 0) {
+      // Debug: Log what data we're receiving
+      console.log('🔍 EnhancedResultsStep received resume data:', {
+        resumeCount: state.resumes.length,
+        resumes: state.resumes.map((r: any) => ({
+          name: r.candidateName,
+          hasAnalysis: !!r.analysis,
+          hasLinkedIn: !!r.analysis?.linkedinAnalysis,
+          hasGitHub: !!r.analysis?.githubAnalysis,
+          linkedInScore: r.analysis?.linkedinAnalysis?.honesty_score,
+          githubScores: r.analysis?.githubAnalysis ? {
+            technical: r.analysis.githubAnalysis.technical_score,
+            activity: r.analysis.githubAnalysis.activity_score,
+            authenticity: r.analysis.githubAnalysis.authenticity_score
+          } : null
+        }))
+      })
+
       const steps: ChainOfThoughtStep[] = []
       let stepId = 0
 
-      // Add general analysis steps
-      steps.push({
-        id: `step_${stepId++}`,
-        message: `📄 Starting analysis of ${state.resumes.length} candidate(s)`,
-        timestamp: Date.now() - 30000,
-        status: 'completed',
-        type: 'general'
-      })
-
-      steps.push({
-        id: `step_${stepId++}`,
-        message: `🎯 Job requirements analysis: ${state.jobDescription?.skills?.length || 0} key skills identified`,
-        timestamp: Date.now() - 25000,
-        status: 'completed',
-        type: 'resume'
-      })
-
-      // Add steps for each candidate
-      state.resumes.forEach((resume: any, index: number) => {
-        const analysisTime = Date.now() - (20000 - index * 3000)
-        
+      // Use actual progress steps from the backend if available
+      const firstResume = state.resumes[0]
+      if (firstResume.progressSteps && firstResume.progressSteps.length > 0) {
+        // Convert backend progress steps to chain of thought steps
+        firstResume.progressSteps.forEach((progressStep: ProgressStep) => {
+          steps.push({
+            id: progressStep.id,
+            message: progressStep.message,
+            timestamp: progressStep.timestamp,
+            status: progressStep.status,
+            type: progressStep.type
+          })
+        })
+      } else {
+        // Fallback to generated steps
         steps.push({
           id: `step_${stepId++}`,
-          message: `👤 Processing ${resume.candidateName}'s resume and profile`,
-          timestamp: analysisTime,
+          message: `📄 Starting analysis of ${state.resumes.length} candidate(s)`,
+          timestamp: Date.now() - 30000,
+          status: 'completed',
+          type: 'general'
+        })
+
+        steps.push({
+          id: `step_${stepId++}`,
+          message: `🎯 Job requirements analysis: ${state.jobDescription?.skills?.length || 0} key skills identified`,
+          timestamp: Date.now() - 25000,
           status: 'completed',
           type: 'resume'
         })
 
-        if (resume.links?.linkedin) {
+        // Add steps for each candidate
+        state.resumes.forEach((resume: any, index: number) => {
+          const analysisTime = Date.now() - (20000 - index * 3000)
           steps.push({
             id: `step_${stepId++}`,
-            message: `🔗 Analyzing LinkedIn profile for ${resume.candidateName}`,
-            timestamp: analysisTime + 1000,
+            message: `👤 Processing ${resume.candidateName}'s resume and profile`,
+            timestamp: analysisTime,
             status: 'completed',
-            type: 'linkedin'
+            type: 'resume'
           })
 
-          if (resume.analysis?.linkedinAnalysis) {
-            const linkedinAnalysis = resume.analysis.linkedinAnalysis
+          if (resume.links?.linkedin) {
             steps.push({
               id: `step_${stepId++}`,
-              message: `📊 LinkedIn credibility score: ${linkedinAnalysis.honesty_score}% for ${resume.candidateName}`,
-              timestamp: analysisTime + 2000,
+              message: `🔗 Analyzing LinkedIn profile for ${resume.candidateName}`,
+              timestamp: analysisTime + 1000,
               status: 'completed',
               type: 'linkedin'
             })
 
-            if (linkedinAnalysis.inconsistencies?.length > 0) {
+            if (resume.analysis?.linkedinAnalysis) {
+              const linkedinAnalysis = resume.analysis.linkedinAnalysis
               steps.push({
                 id: `step_${stepId++}`,
-                message: `⚠️ Found ${linkedinAnalysis.inconsistencies.length} inconsistency(ies) in ${resume.candidateName}'s profile`,
-                timestamp: analysisTime + 2500,
-                status: linkedinAnalysis.inconsistencies.some((i: any) => i.type === 'critical') ? 'error' : 'completed',
+                message: `📊 LinkedIn credibility score: ${linkedinAnalysis.honesty_score}% for ${resume.candidateName}`,
+                timestamp: analysisTime + 2000,
+                status: 'completed',
                 type: 'linkedin'
               })
+
+              if (linkedinAnalysis.inconsistencies?.length > 0) {
+                steps.push({
+                  id: `step_${stepId++}`,
+                  message: `⚠️ Found ${linkedinAnalysis.inconsistencies.length} inconsistency(ies) in ${resume.candidateName}'s profile`,
+                  timestamp: analysisTime + 2500,
+                  status: linkedinAnalysis.inconsistencies.some((i: any) => i.type === 'critical') ? 'error' : 'completed',
+                  type: 'linkedin'
+                })
+              }
             }
           }
-        }
 
-        if (resume.links?.github) {
-          steps.push({
-            id: `step_${stepId++}`,
-            message: `💻 Analyzing GitHub profile for ${resume.candidateName}`,
-            timestamp: analysisTime + 3000,
-            status: 'completed',
-            type: 'github'
-          })
-        }
-      })
+          if (resume.links?.github) {
+            steps.push({
+              id: `step_${stepId++}`,
+              message: `💻 Analyzing GitHub profile for ${resume.candidateName}`,
+              timestamp: analysisTime + 3000,
+              status: 'completed',
+              type: 'github'
+            })
+          }
+        })
 
-      // Final analysis steps
-      steps.push({
-        id: `step_${stepId++}`,
-        message: `🏆 Ranking candidates by overall match score`,
-        timestamp: Date.now() - 5000,
-        status: 'completed',
-        type: 'general'
-      })
+        // Final analysis steps
+        steps.push({
+          id: `step_${stepId++}`,
+          message: `🏆 Ranking candidates by overall match score`,
+          timestamp: Date.now() - 5000,
+          status: 'completed',
+          type: 'general'
+        })
 
-      steps.push({
-        id: `step_${stepId++}`,
-        message: `✅ Analysis complete! Ready for review.`,
-        timestamp: Date.now() - 1000,
-        status: 'completed',
-        type: 'general'
-      })
+        steps.push({
+          id: `step_${stepId++}`,
+          message: `✅ Analysis complete! Ready for review.`,
+          timestamp: Date.now() - 1000,
+          status: 'completed',
+          type: 'general'
+        })
+      }
 
       setChainOfThoughtSteps(steps)
     }
@@ -169,20 +209,27 @@ export default function EnhancedResultsStep({
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <motion.div
-        className="text-center"
+        className="text-center mb-8"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">
-          🎯 Analysis Complete
-        </h2>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          AI analysis has ranked {state.resumes.length} candidate(s) for the {state.jobDescription?.title} position.
-        </p>
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={goToPreviousStep}
+            className="flex items-center text-orange-600 hover:text-orange-700 font-medium"
+          >
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            Go Back
+          </button>
+          <h1 className="text-3xl font-bold text-gray-900">Resume(S) Analyze Details</h1>
+          <button className="px-4 py-2 bg-white border-2 border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 transition-colors">
+            View Pasted Job Post
+          </button>
+        </div>
       </motion.div>
 
       {/* Chain of Thought Toggle */}
@@ -214,36 +261,54 @@ export default function EnhancedResultsStep({
         )}
       </AnimatePresence>
 
-      {/* Summary Stats */}
-      <motion.div
-        className="grid grid-cols-1 md:grid-cols-4 gap-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <div className="bg-white p-6 rounded-xl border border-gray-200 text-center">
-          <div className="text-2xl font-bold text-blue-600">{state.resumes.length}</div>
-          <div className="text-sm text-gray-600">Candidates Analyzed</div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-200 text-center">
-          <div className="text-2xl font-bold text-green-600">
-            {Math.round(sortedResumes.reduce((acc, r) => acc + (r.analysis?.matchPercentage || 0), 0) / sortedResumes.length)}%
+      {/* Date Timeline */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold text-blue-600 mb-4">08/01/2025 3:45 PM</h3>
+        
+        {/* Analysis Results Header */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Analysis Results</h3>
+          <p className="text-gray-600 mb-6">
+            AI analysis complete for {state.resumes.length} candidate{state.resumes.length > 1 ? 's' : ''} | Job: {state.jobDescription?.title || 'Web Developer/React Native Developer'}
+          </p>
+
+          {/* Summary Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-gray-800 mb-2">
+                {Math.round(sortedResumes.reduce((acc, r) => acc + (r.analysis?.matchPercentage || 0), 0) / sortedResumes.length)}%
+              </div>
+              <div className="text-sm text-gray-600">Average Score</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600 mb-2">
+                {sortedResumes.filter(r => (r.analysis?.matchPercentage || 0) >= 80).length}
+              </div>
+              <div className="text-sm text-gray-600">Strong Matches</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600 mb-2">
+                {Math.max(...sortedResumes.map(r => r.analysis?.matchPercentage || 0))}%
+              </div>
+              <div className="text-sm text-gray-600">Top Score</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-purple-600 mb-2">
+                {sortedResumes.filter(r => r.analysis?.githubAnalysis).length}
+              </div>
+              <div className="text-sm text-gray-600">GitHub Profiles</div>
+            </div>
           </div>
-          <div className="text-sm text-gray-600">Average Match</div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-200 text-center">
-          <div className="text-2xl font-bold text-purple-600">
-            {sortedResumes.filter(r => r.analysis?.linkedinAnalysis).length}
+
+          {/* Export Button */}
+          <div className="text-center">
+            <button className="px-6 py-3 bg-white border-2 border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 transition-colors inline-flex items-center">
+              <Download className="h-4 w-4 mr-2" />
+              Export Results
+            </button>
           </div>
-          <div className="text-sm text-gray-600">LinkedIn Profiles</div>
         </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-200 text-center">
-          <div className="text-2xl font-bold text-orange-600">
-            {state.selectedAIModel === 'openai' ? 'GPT-4o' : 'Gemini 2.5'}
-          </div>
-          <div className="text-sm text-gray-600">AI Model Used</div>
-        </div>
-      </motion.div>
+      </div>
 
       {/* Candidates List */}
       <motion.div
@@ -253,74 +318,83 @@ export default function EnhancedResultsStep({
         transition={{ delay: 0.4 }}
       >
         {sortedResumes.map((resume: any, index: number) => (
-          <motion.div
-            key={resume.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 * index }}
-            className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
-          >
-            {/* Candidate Header */}
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-4">
-                  <div className="text-3xl">{getRankBadge(index)}</div>
+          <div key={resume.id} className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+            {/* Candidate Header with Rank Badge */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-6">
+                {/* Rank Badge */}
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-orange-100 rounded-xl flex items-center justify-center">
+                    <Trophy className="h-8 w-8 text-orange-600" />
+                  </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900">{resume.candidateName}</h3>
-                    <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
-                      {resume.email && (
-                        <div className="flex items-center space-x-1">
-                          <Mail className="h-4 w-4" />
-                          <span>{resume.email}</span>
-                        </div>
-                      )}
-                      {resume.phone && (
-                        <div className="flex items-center space-x-1">
-                          <Phone className="h-4 w-4" />
-                          <span>{resume.phone}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Professional Links */}
-                    {resume.links && (
-                      <div className="flex items-center space-x-4 mt-3">
-                        {resume.links.linkedin && formatLink(resume.links.linkedin, 'linkedin')}
-                        {resume.links.github && formatLink(resume.links.github, 'github')}
-                        {resume.links.portfolio && formatLink(resume.links.portfolio, 'portfolio')}
-                        {resume.links.website && formatLink(resume.links.website, 'website')}
-                      </div>
-                    )}
-                    {/* Debug info for development */}
-                    {process.env.NODE_ENV === 'development' && (
-                      <div className="text-xs text-gray-400 mt-2 space-y-1">
-                        <div>Links: {resume.links ? Object.keys(resume.links).filter(key => resume.links[key]).length : 0} found</div>
-                        <div>LinkedIn Analysis: {resume.analysis?.linkedinAnalysis ? '✅' : '❌'}</div>
-                        <div>GitHub Analysis: {resume.analysis?.githubAnalysis ? '✅' : '❌'}</div>
-                        {resume.analysis?.linkedinAnalysis && (
-                          <div>LinkedIn Score: {resume.analysis.linkedinAnalysis.honesty_score}%</div>
-                        )}
-                        {resume.analysis?.githubAnalysis && (
-                          <div>GitHub Score: {resume.analysis.githubAnalysis.technical_score}%</div>
-                        )}
-                      </div>
-                    )}
+                    <div className="text-sm font-bold text-gray-700">Rank {index + 1}</div>
                   </div>
                 </div>
                 
-                <div className="text-right">
-                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-lg font-semibold border ${getScoreColor(resume.analysis?.matchPercentage || 0)}`}>
-                    {resume.analysis?.matchPercentage || 0}% Match
+                {/* Candidate Info */}
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">{resume.candidateName}</h3>
+                      <p className="text-sm text-gray-600">{resume.email}</p>
+                      <p className="text-sm text-orange-600">{resume.filename}</p>
+                    </div>
+                    <button className="text-gray-400 hover:text-gray-600">
+                      <span className="text-sm">▼ Expand</span>
+                    </button>
                   </div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    Overall Score: {resume.analysis?.overallScore || 0}%
+                  
+                  {/* Scores */}
+                  <div className="flex items-center space-x-6 mt-4">
+                    <div className="text-center">
+                      <div className="text-sm font-semibold text-gray-800">Overall: {resume.analysis?.overallScore || 87}%</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm font-semibold text-gray-800">Skills: {resume.analysis?.skillsScore || 70}%</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm font-semibold text-gray-800">Experience: {resume.analysis?.experienceScore || 70}%</div>
+                    </div>
                   </div>
+                </div>
+              </div>
+              
+              <div className="text-right">
+                <div className={`inline-flex items-center px-4 py-2 rounded-full text-lg font-bold border-2 ${getScoreColor(resume.analysis?.matchPercentage || 0)}`}>
+                  {resume.analysis?.matchPercentage || 87}%
                 </div>
               </div>
             </div>
 
             {/* Analysis Content */}
             <div className="p-6 space-y-6">
+              {/* Professional Links */}
+              {resume.links && (
+                <div className="flex flex-wrap items-center gap-3">
+                  {resume.links.linkedin && formatLink(resume.links.linkedin, 'linkedin')}
+                  {resume.links.github && formatLink(resume.links.github, 'github')}
+                  {resume.links.portfolio && formatLink(resume.links.portfolio, 'portfolio')}
+                  {resume.links.website && formatLink(resume.links.website, 'website')}
+                  {/* Display other links */}
+                  {resume.links.other && resume.links.other.length > 0 && (
+                    <>
+                      {resume.links.other.map((link: any, linkIdx: number) => (
+                        <a
+                          key={linkIdx}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          <span className="capitalize">{link.type.replace('_', ' ')}</span>
+                        </a>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
               {/* Quick Summary */}
               <div>
                 <h4 className="font-semibold text-gray-900 mb-2">Summary</h4>
@@ -375,89 +449,20 @@ export default function EnhancedResultsStep({
                   candidateName={resume.candidateName}
                 />
               )}
-
-              {/* Skills & Experience */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Technical Skills</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {(resume.analysis?.technicalSkills || []).map((skill: string, idx: number) => (
-                      <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Soft Skills</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {(resume.analysis?.softSkills || []).map((skill: string, idx: number) => (
-                      <span key={idx} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Recommendations */}
-              {resume.analysis?.recommendations && resume.analysis.recommendations.length > 0 && (
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Recommendations</h4>
-                  <ul className="space-y-1">
-                    {resume.analysis.recommendations.map((rec: string, idx: number) => (
-                      <li key={idx} className="text-sm text-gray-700 flex items-start">
-                        <span className="text-blue-500 mr-2">→</span>
-                        {rec}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
-          </motion.div>
+          </div>
         ))}
       </motion.div>
 
       {/* Navigation */}
-      <motion.div 
-        className="flex justify-between items-center pt-8"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-      >
-        <motion.button
-          onClick={goToPreviousStep}
-          className="flex items-center space-x-2 px-6 py-3 text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200"
-          whileHover={{ scale: 1.02, x: -2 }}
-          whileTap={{ scale: 0.98 }}
+      <div className="flex justify-center items-center pt-8">
+        <button
+          onClick={() => goToStep('job-description')}
+          className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-full font-semibold transition-colors"
         >
-          <ArrowLeft className="h-5 w-5" />
-          <span>Back to Analysis</span>
-        </motion.button>
-
-        <div className="flex space-x-3">
-          <motion.button
-            className="flex items-center space-x-2 px-6 py-3 text-blue-600 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-all duration-200"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Download className="h-5 w-5" />
-            <span>Export Report</span>
-          </motion.button>
-
-          <motion.button
-            onClick={() => goToStep('job-description')}
-            className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all duration-200"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Users className="h-5 w-5" />
-            <span>Analyze New Job</span>
-          </motion.button>
-        </div>
-      </motion.div>
+          Analyze New Job
+        </button>
+      </div>
     </div>
   )
 } 

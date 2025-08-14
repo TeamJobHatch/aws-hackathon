@@ -377,9 +377,11 @@ async function analyzeProjectWithGemini(repoDetails: RepositoryDetails, resumeTe
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   const prompt = `
-🔍 COMPREHENSIVE GITHUB REPOSITORY ANALYSIS (Powered by Gemini 2.5 Flash)
+🔍 ENHANCED GITHUB REPOSITORY ANALYSIS (Powered by Gemini 2.5 Flash)
 
-You are a senior technical recruiter analyzing GitHub repositories for hiring decisions. Provide brutally honest assessment with specific hiring impact indicators.
+You are a world-class senior technical recruiter with 15+ years of experience analyzing GitHub repositories for Fortune 500 companies. Your analysis directly impacts hiring decisions worth millions in salary and recruitment costs. Provide brutally honest, data-driven assessment with specific hiring impact indicators.
+
+ANALYSIS MANDATE: Be thorough, specific, and actionable. Focus on technical competency, code authenticity, and hiring risk assessment.
 
 📊 REPOSITORY DATA:
 Repository: ${repoDetails.name}
@@ -473,48 +475,72 @@ Return comprehensive JSON analysis focusing on HIRING IMPACT:
   }
 }
 
-🔍 CRITICAL ANALYSIS AREAS:
+🔍 CRITICAL ANALYSIS AREAS - ENHANCED FRAMEWORK:
 
-1. RESUME VERIFICATION:
-   - Scan resume for project name, similar descriptions, technologies
-   - Check timeline alignment between resume claims and commit dates
-   - Identify if candidate claims solo vs group work
+1. TECHNICAL COMPETENCY ASSESSMENT (Weight: 40%):
+   - Code architecture and design patterns quality
+   - Algorithm complexity and optimization awareness
+   - Technology stack appropriateness and modern practices
+   - Error handling, testing, and production readiness
+   - Performance considerations and scalability awareness
 
-2. AI USAGE DETECTION (GEMINI EXPERTISE):
-   - Analyze code patterns for AI generation (repetitive structures, perfect formatting, generic naming)
-   - Check for unexpectedly sophisticated code for claimed experience level
-   - Look for copy-paste patterns or boilerplate code without customization
-   - Estimate percentage with high confidence
+2. AUTHENTICITY & AI USAGE DETECTION (Weight: 30%):
+   - AI-generated code indicators: Repetitive patterns, perfect formatting, generic variable names
+   - Sudden code quality jumps inconsistent with experience level
+   - Copy-paste patterns from tutorials/Stack Overflow without attribution
+   - Boilerplate code vs. custom implementation ratio
+   - Commit message patterns (AI tools often generate specific formats)
+   - PROVIDE SPECIFIC PERCENTAGE ESTIMATE WITH HIGH CONFIDENCE
 
-3. PROJECT COMPLETENESS:
-   - Demo links: Live sites (+30 points), GitHub Pages (+20), Videos (+15)
-   - Documentation: Professional README (+20), API docs (+15)
-   - Project polish: Tests (+15), CI/CD (+10), proper setup (+10)
+3. PROJECT COMPLETENESS & PROFESSIONALISM (Weight: 20%):
+   - Live demonstrations: Production deployments (+30), GitHub Pages (+20), Video demos (+15)
+   - Documentation quality: Professional README (+25), API documentation (+20), Setup instructions (+15)
+   - Development practices: Tests (+20), CI/CD (+15), Proper branching (+10), Issue tracking (+10)
+   - Code comments and maintainability
 
-4. RED FLAG DETECTION:
-   - Batch commits: All work done in 1-2 days
-   - Unrealistic timeline: Complex project "completed" too quickly
-   - Group project red flags: Claims group work but no collaborator evidence
-   - Copy-paste indicators: Identical structures across projects
+4. RESUME VERIFICATION & CONSISTENCY (Weight: 10%):
+   - Cross-reference project claims with actual implementation
+   - Timeline consistency: Commit patterns vs. claimed development duration
+   - Technology claims vs. actual usage in code
+   - Solo vs. group project claims verification
 
-5. POSITIVE INDICATORS:
-   - Original problem-solving approaches
-   - Gradual project evolution through commits
-   - Professional documentation and setup
-   - Real-world problem solutions
+5. RED FLAG DETECTION (CRITICAL):
+   - Batch commit patterns: Entire project committed in 1-2 days
+   - Unrealistic complexity for timeframe
+   - Group projects with unclear individual contributions
+   - Identical code structures across multiple projects
+   - Missing fundamental knowledge in supposed expertise areas
 
-6. HIRING IMPACT ASSESSMENT:
-   - "positive": Helps hiring case
-   - "strong_positive": Major hiring advantage
-   - "neutral": No impact on hiring
-   - "negative": Hurts hiring case
-   - "caution": Requires deeper investigation
+6. POSITIVE INDICATORS (HIRING ADVANTAGES):
+   - Original problem-solving approaches and creative solutions
+   - Evolutionary development patterns showing iterative improvement
+   - Real-world problem solving with practical applications
+   - Active maintenance and version updates
+   - Community engagement (issues, pull requests, discussions)
 
-Be extremely thorough. This analysis directly impacts hiring decisions. Focus on authenticity, technical skill demonstration, and real contribution assessment.
+7. HIRING IMPACT CLASSIFICATION:
+   - "strong_positive": Exceptional technical demonstration, clear hiring advantage
+   - "positive": Good technical skills, supports hiring decision
+   - "neutral": Basic competency, no significant impact
+   - "negative": Concerns identified, may hurt hiring prospects
+   - "caution": Serious red flags, requires immediate investigation
+
+ANALYSIS REQUIREMENTS:
+- Be specific with evidence and examples
+- Quantify findings with percentages and metrics
+- Provide actionable recommendations for hiring managers
+- Flag any inconsistencies or concerns immediately
+- Focus on what this tells us about the candidate's actual capabilities
 `
 
   try {
-    const result = await model.generateContent(prompt)
+    // Add timeout for Gemini API call to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Gemini analysis timeout after 30 seconds')), 30000)
+    })
+
+    const geminiPromise = model.generateContent(prompt)
+    const result = await Promise.race([geminiPromise, timeoutPromise])
     const response = result.response
     const responseText = response.text()
 

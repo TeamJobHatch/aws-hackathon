@@ -32,8 +32,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     }
 
-    // Test with a simple API call
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    // Test with a simple API call using Gemini 2.5 Flash
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
     
     const result = await model.generateContent({
       contents: [{
@@ -50,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         success: true,
         apiStatus: 'working',
         message: 'Gemini API is working correctly',
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         response: response,
         keyExists: true,
         keyPrefix: process.env.GEMINI_API_KEY.substring(0, 10) + '...'

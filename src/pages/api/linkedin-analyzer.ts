@@ -60,12 +60,23 @@ interface LinkedInAnalysis {
 
 async function extractLinkedInData(linkedInUrl: string, resumeText: string): Promise<LinkedInProfileData> {
   const prompt = `
-Analyze this LinkedIn profile URL and the resume content to extract structured LinkedIn profile data.
+🔍 ENHANCED LINKEDIN PROFILE DATA EXTRACTION
+
+You are an expert HR analyst specializing in LinkedIn profile analysis and candidate verification. Your task is to create a comprehensive, realistic LinkedIn profile simulation based on resume content.
+
+ANALYSIS MANDATE: Generate realistic, detailed LinkedIn profile data that accurately reflects professional standards and typical profile completeness for candidates at this level.
 
 LinkedIn URL: ${linkedInUrl}
 Resume Content: ${resumeText.substring(0, 3000)}
 
-Based on the URL pattern and resume content, simulate what the LinkedIn profile would contain and return in this exact JSON format:
+Based on the resume content and professional standards, simulate what a complete LinkedIn profile would contain. Focus on:
+1. Professional consistency with resume
+2. Realistic connection counts and engagement levels
+3. Industry-appropriate skill listings
+4. Complete professional experience with detailed descriptions
+5. Educational background verification
+
+Return structured data in this exact JSON format:
 
 {
   "name": "Full Name",
@@ -100,7 +111,15 @@ Based on the URL pattern and resume content, simulate what the LinkedIn profile 
   "summary": "Professional summary section"
 }
 
-Extract information from the resume and create a realistic LinkedIn profile structure.`
+QUALITY REQUIREMENTS:
+- Use realistic professional language and descriptions
+- Ensure experience descriptions are detailed and achievement-focused
+- Include appropriate technical and soft skills for the role level
+- Make connection counts realistic for career stage (100-500 for junior, 500+ for senior)
+- Create professional headlines that reflect actual career progression
+- Generate comprehensive summaries that showcase value proposition
+
+Extract information from the resume and create a realistic LinkedIn profile structure that would pass professional verification.`
 
   try {
     const completion = await openai.chat.completions.create({

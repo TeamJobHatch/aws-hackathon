@@ -22,7 +22,7 @@ export default function ConfirmJobDetails({
     return (
       <div className="text-center py-16">
         <p className="text-gray-600">No job description found. Please go back and upload one.</p>
-        <button onClick={goToPreviousStep} className="btn-jobhatch-primary mt-4">
+        <button onClick={goToPreviousStep} className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl font-semibold mt-4 transition-colors">
           Go Back
         </button>
       </div>
@@ -30,15 +30,15 @@ export default function ConfirmJobDetails({
   }
 
   return (
-    <div className="container-jobhatch-narrow">
+    <div className="max-w-4xl mx-auto">
       <div className="text-center mb-8">
-        <h2 className="heading-lg">Confirm Job Details</h2>
-        <p className="text-gray-600">
+        <h2 className="text-3xl font-bold text-gray-900 mb-4">Confirm Job Details</h2>
+        <p className="text-lg text-gray-600">
           Please review the extracted job information before proceeding
         </p>
       </div>
 
-      <div className="jobhatch-card space-y-6">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 space-y-6">
         {/* Job Header */}
         <div className="border-b border-gray-200 pb-6">
           <h3 className="text-2xl font-bold text-gray-900 mb-3">{jobDescription.title}</h3>
@@ -155,7 +155,7 @@ export default function ConfirmJobDetails({
       <div className="flex flex-col sm:flex-row gap-4 mt-8">
         <button
           onClick={goToPreviousStep}
-          className="btn-jobhatch-secondary flex-1 flex items-center justify-center"
+          className="flex-1 flex items-center justify-center px-6 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
         >
           <ArrowLeft className="mr-2 h-5 w-5" />
           Edit Job Details
@@ -163,7 +163,7 @@ export default function ConfirmJobDetails({
         
         <button
           onClick={goToNextStep}
-          className="btn-jobhatch-primary flex-1 flex items-center justify-center"
+          className="flex-1 flex items-center justify-center px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-semibold transition-colors"
         >
           Proceed to Upload Resumes
           <ArrowRight className="ml-2 h-5 w-5" />

@@ -188,10 +188,10 @@ export default function JobDescriptionStep({
   }
 
   return (
-    <div className="container-jobhatch-narrow">
+    <div className="max-w-4xl mx-auto">
       <div className="text-center mb-8">
-        <h2 className="heading-lg">Job Description</h2>
-        <p className="text-gray-600">
+        <h2 className="text-3xl font-bold text-gray-900 mb-4">Job Description</h2>
+        <p className="text-lg text-gray-600">
           Upload a job posting, enter a link, or create it manually
         </p>
       </div>
@@ -240,12 +240,16 @@ export default function JobDescriptionStep({
           <div className="space-y-6">
             <div
               {...getRootProps()}
-              className={`upload-area-jobhatch ${isDragActive ? 'upload-area-active' : ''}`}
+              className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 ${
+                isDragActive 
+                  ? 'border-orange-400 bg-orange-50' 
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
             >
               <input {...getInputProps()} />
               <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               {isDragActive ? (
-                <p className="text-blue-600 font-medium">Drop the job description here...</p>
+                <p className="text-orange-600 font-medium">Drop the job description here...</p>
               ) : (
                 <div>
                   <p className="text-gray-600 font-medium mb-2">
@@ -287,11 +291,11 @@ export default function JobDescriptionStep({
             <button
               onClick={handleLinkSubmit}
               disabled={linkMutation.isLoading || !jobLink.trim()}
-              className="btn-jobhatch-primary w-full flex items-center justify-center"
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center transition-colors"
             >
               {linkMutation.isLoading ? (
                 <>
-                  <div className="jobhatch-spinner mr-2"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                   Fetching Job Details...
                 </>
               ) : (
@@ -365,7 +369,7 @@ export default function JobDescriptionStep({
 
             <button
               onClick={handleManualSubmit}
-              className="btn-jobhatch-primary w-full flex items-center justify-center"
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center transition-colors"
             >
               Continue with Job Description
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -378,7 +382,7 @@ export default function JobDescriptionStep({
       <div className="flex justify-between mt-8">
         <button
           onClick={goToPreviousStep}
-          className="btn-jobhatch-secondary flex items-center justify-center"
+          className="flex items-center justify-center px-6 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
         >
           <ArrowLeft className="mr-2 h-5 w-5" />
           Back

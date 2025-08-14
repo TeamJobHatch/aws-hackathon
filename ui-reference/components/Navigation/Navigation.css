@@ -1,0 +1,74 @@
+/* Navigation.css */
+.navigation-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: #f2dfc2;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.nav-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 4rem;
+}
+
+/* Logo Section */
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.logo-section:hover {
+  opacity: 0.9;
+}
+
+.nav-logo {
+  height: 2.5rem;
+  width: auto;
+}
+
+.brand-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #4B5563;
+}
+
+/* Right Side */
+.nav-right {
+  display: flex;
+  align-items: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .nav-container {
+    padding: 0 1rem;
+  }
+  
+  .nav-logo {
+    height: 2rem;
+  }
+  
+  .brand-name {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-section {
+    gap: 0.5rem;
+  }
+  
+  .brand-name {
+    font-size: 1.125rem;
+  }
+}

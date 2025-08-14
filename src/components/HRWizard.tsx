@@ -196,13 +196,13 @@ export default function HRWizard() {
     
     return (
       <motion.div 
-        className="flex items-center justify-center space-x-2 sm:space-x-4 mb-8 px-4"
+        className="flex items-center justify-center mb-8"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="liquid-glass-strong rounded-full px-8 py-6 shadow-modern-lg border border-white/30 gradient-mesh">
-          <div className="flex items-center space-x-2 sm:space-x-4">
+        <div className="bg-white rounded-2xl px-8 py-6 shadow-lg border border-gray-200">
+          <div className="flex items-center space-x-4">
             {steps.map((step, index) => {
               const isActive = index === currentIndex
               const isCompleted = index < currentIndex
@@ -221,7 +221,7 @@ export default function HRWizard() {
                     {/* Connection Line (Before) */}
                     {index > 0 && (
                       <motion.div
-                        className={`w-4 sm:w-8 h-0.5 transition-all duration-500 ${
+                        className={`w-8 h-0.5 transition-all duration-500 ${
                           steps[index - 1] && getCurrentStepIndex() > index - 1 ? 'bg-green-500' : 'bg-gray-300'
                         }`}
                         initial={{ scaleX: 0 }}
@@ -234,11 +234,11 @@ export default function HRWizard() {
                     <motion.button
                       onClick={() => canNavigate ? goToStep(step.id) : null}
                       disabled={!canNavigate}
-                      className={`relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 font-bold text-sm transition-all duration-300 mx-1 ${
+                      className={`relative flex items-center justify-center w-12 h-12 rounded-full border-2 font-bold text-sm transition-all duration-300 mx-1 ${
                         isCompleted 
                           ? 'bg-green-500 border-green-500 text-white shadow-lg' 
                           : isActive 
-                          ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/25' 
+                          ? 'bg-orange-500 border-orange-500 text-white shadow-lg' 
                           : 'bg-white border-gray-300 text-gray-500'
                       } ${canNavigate ? 'cursor-pointer hover:scale-110' : 'cursor-not-allowed opacity-50'}`}
                       whileHover={canNavigate ? { scale: 1.1 } : {}}
@@ -254,7 +254,7 @@ export default function HRWizard() {
                             exit={{ scale: 0, rotate: 90 }}
                             transition={{ type: "spring", stiffness: 500, damping: 15 }}
                           >
-                            <Check className="h-5 w-5 sm:h-6 sm:w-6" />
+                            <Check className="h-6 w-6" />
                           </motion.div>
                         ) : (
                           <motion.span
@@ -268,28 +268,12 @@ export default function HRWizard() {
                           </motion.span>
                         )}
                       </AnimatePresence>
-
-                      {/* Active Step Pulse Effect */}
-                      {isActive && (
-                        <motion.div
-                          className="absolute inset-0 rounded-full bg-orange-500"
-                          animate={{ 
-                            scale: [1, 1.4, 1], 
-                            opacity: [0.7, 0, 0.7] 
-                          }}
-                          transition={{ 
-                            repeat: Infinity, 
-                            duration: 2,
-                            ease: "easeInOut"
-                          }}
-                        />
-                      )}
                     </motion.button>
 
                     {/* Connection Line (After) */}
                     {index < steps.length - 1 && (
                       <motion.div
-                        className={`w-4 sm:w-8 h-0.5 transition-all duration-500 ${
+                        className={`w-8 h-0.5 transition-all duration-500 ${
                           isCompleted ? 'bg-green-500' : 'bg-gray-300'
                         }`}
                         initial={{ scaleX: 0 }}
@@ -299,9 +283,9 @@ export default function HRWizard() {
                     )}
                   </div>
 
-                  {/* Step Title - Perfectly Centered */}
+                  {/* Step Title */}
                   <motion.div
-                    className={`text-xs mt-3 hidden sm:block font-medium transition-colors duration-200 text-center whitespace-nowrap ${
+                    className={`text-xs mt-3 font-medium transition-colors duration-200 text-center whitespace-nowrap ${
                       isActive ? 'text-orange-600' : 
                       isCompleted ? 'text-green-600' : 
                       canNavigate ? 'text-gray-600' : 'text-gray-400'
@@ -312,14 +296,6 @@ export default function HRWizard() {
                   >
                     {step.title}
                   </motion.div>
-
-                  {/* Mobile Step Title Tooltip */}
-                  <div className="sm:hidden absolute -top-12 left-1/2 transform -translate-x-1/2 opacity-0 hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                    <div className="bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                      {step.title}
-                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 -mt-1" />
-                    </div>
-                  </div>
                 </motion.div>
               )
             })}
@@ -414,16 +390,35 @@ export default function HRWizard() {
   }
 
   return (
-    <div className="jobhatch-bg min-h-screen particle-bg relative">
-      {/* Floating decorative elements */}
-      <div className="absolute top-10 left-10 w-20 h-20 bg-gradient-to-br from-orange-200 to-orange-300 rounded-full opacity-20 float-gentle"></div>
-      <div className="absolute top-1/4 right-16 w-16 h-16 bg-gradient-to-br from-blue-200 to-blue-300 rounded-full opacity-25 float-rotate"></div>
-      <div className="absolute bottom-1/4 left-1/4 w-12 h-12 bg-gradient-to-br from-purple-200 to-purple-300 rounded-full opacity-15 float-gentle"></div>
-      
+    <div className="min-h-screen" style={{ backgroundColor: '#fff7e8' }}>
       {/* API Status Indicator */}
       {renderApiStatus()}
       
-      <div className="container-jobhatch py-8 relative z-10">
+      {/* Header Navigation */}
+      {state.currentStep !== 'welcome' && (
+        <header className="border-b border-gray-200 bg-white">
+          <div className="max-width-container px-6 py-4">
+            <div className="flex items-center justify-between">
+              {/* Logo Section */}
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-orange-600 rounded-xl flex items-center justify-center p-2">
+                  <img 
+                    src="/images/LOGO.jpg" 
+                    alt="JobHatch Logo" 
+                    className="w-full h-full object-contain rounded-lg"
+                  />
+                </div>
+                <span className="text-2xl font-bold text-gray-700">JOBHATCH</span>
+              </div>
+              
+              {/* User Profile */}
+              <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
+            </div>
+          </div>
+        </header>
+      )}
+      
+      <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Hide step indicator on welcome page */}
         {state.currentStep !== 'welcome' && renderStepIndicator()}
         
